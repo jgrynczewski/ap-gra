@@ -31,6 +31,7 @@ Błąd (nieznana scena, opcja spoza listy, gra skończona) → HTTP 400 `{"error
 - `text` - tekst już dla stanu gracza (linie zależne od flag rozstrzygnięte); `\n\n` - nowy akapit, `\n` - nowy wers.
 - `options` - tylko widoczne; `number` podaje się w `/v1/choose`.
 - `ending` - przy zakończeniu `{"id", "title", "number", "total"}` (np. zakończenie 3 z 7), `options` puste. Które zakończenia gracz już odkrył - zapisuje klient (na komputerze gracza).
+- `state` - zapis gry: klient zapisuje go po każdym wyborze i może wrócić do gry po restarcie komputera (`docs/zalozenia.md` → "Zapis gry").
 - `image` - na później (grafika sceny).
 - Planowane: adresy nagrań dla tekstu i opcji (nagrania generowane z góry Piperem).
 
