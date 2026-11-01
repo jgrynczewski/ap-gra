@@ -29,6 +29,7 @@ INTERFACE = {
     "wyjdz": "Wyjdź z gry",
     "kontynuuj": "Kontynuuj",
     "nowa_gra": "Nowa gra",
+    "wybrales": "Wybrałeś:",  # potwierdzenie wyboru, potem nagranie opcji
 }
 
 _ORDINALS = ["pierwsze", "drugie", "trzecie", "czwarte", "piąte", "szóste", "siódme", "ósme",

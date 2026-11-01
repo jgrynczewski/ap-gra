@@ -52,8 +52,11 @@ Poza opcjami plansza ma stałe przyciski - też czytane głosem narratora. `GET 
 {"powtorz": {"text": "Powtórz", "audio": {"url": "...", "duration": 0.8}},
  "wyjdz": {"text": "Wyjdź z gry", "audio": {...}},
  "kontynuuj": {"text": "Kontynuuj", "audio": {...}},
- "nowa_gra": {"text": "Nowa gra", "audio": {...}}}
+ "nowa_gra": {"text": "Nowa gra", "audio": {...}},
+ "wybrales": {"text": "Wybrałeś:", "audio": {...}}}
 ```
+
+`wybrales` - potwierdzenie po wyborze: klient czyta „Wybrałeś:”, potem nagranie wybranej opcji (wybrany przycisk podświetlony), dopiero potem następna scena.
 
 Lista - `engine/voice.py` (`INTERFACE`); nowy przycisk = nowy wpis, nagranie powstaje przy budowaniu.
 
