@@ -57,6 +57,14 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content[:4], b"RIFF")
 
+    def test_view_continues_saved_game(self):
+        view = self.client.post("/v1/start").json()
+        view = self.client.post("/v1/choose", json={"state": view["state"], "option": 1}).json()
+        again = self.client.post("/v1/view", json={"state": view["state"]}).json()
+        self.assertEqual(again, view)
+        response = self.client.post("/v1/view", json={"state": {"scene": "nie_ma", "flags": []}})
+        self.assertEqual(response.status_code, 400)
+
     def test_errors(self):
         state = self.client.post("/v1/start").json()["state"]
         response = self.client.post("/v1/choose", json={"state": state, "option": 9})

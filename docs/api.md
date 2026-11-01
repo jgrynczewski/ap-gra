@@ -9,6 +9,7 @@ Cienka warstwa nad silnikiem (`api/app.py` → `engine.Game`). Na komputerze z A
 | `GET /v1/health` | - | `{"ok": true, "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
 | `POST /v1/start` | - | widok pierwszej sceny |
 | `POST /v1/choose` | `{"state": {...}, "option": 2}` | widok następnej sceny |
+| `POST /v1/view` | `{"state": {...}}` | widok sceny z zapisu (kontynuacja gry); zapis niepasujący do scenariusza → 400 |
 | `GET /v1/audio/<nazwa>.wav` | - | nagranie (adres z widoku) |
 
 Błąd (nieznana scena, opcja spoza listy, gra skończona) → HTTP 400 `{"error": "..."}`; zły kształt zapytania → 422.

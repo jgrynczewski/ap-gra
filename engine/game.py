@@ -28,6 +28,14 @@ class Game:
     def start(self) -> dict:
         return self._enter(self.scenario.start, set())
 
+    def view(self, state: dict) -> dict:
+        """The view for a saved state - continuing a game. Entering a scene
+        again does not change the flags (it sets / clears the same ones)."""
+        flags = state.get("flags", [])
+        if not isinstance(flags, list):
+            raise GameError("Zły zapis gry.")
+        return self._enter(self._scene(state.get("scene")).id, set(flags))
+
     def choose(self, state: dict, option: int) -> dict:
         """option - number of the visible option, from 1."""
         scene = self._scene(state.get("scene"))

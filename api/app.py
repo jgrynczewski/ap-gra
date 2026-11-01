@@ -62,6 +62,15 @@ def start() -> dict:
     return game.start()
 
 
+class Saved(BaseModel):
+    state: dict  # "state" saved by the client
+
+
+@app.post("/v1/view")
+def view(saved: Saved) -> dict:
+    return game.view(saved.state)
+
+
 @app.post("/v1/choose")
 def choose(choice: Choice) -> dict:
     return game.choose(choice.state, choice.option)
