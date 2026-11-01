@@ -1,0 +1,10 @@
+# Same line endings on Linux (AP computer, container) and Windows: always LF,
+# whatever core.autocrlf is set to on a given computer.
+* text=auto eol=lf
+
+# Binary files - no conversion
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
