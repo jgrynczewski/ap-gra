@@ -1,7 +1,9 @@
 # Sala pod zegarem
 
-// Akt 1 - Wiersze. Próbka (pionowy przekrój): od pierwszego wiersza do drzwi
-// auli. Dalej - zarys w docs/fabula.md.
+// Akt 1 - Wiersze: od pierwszego wiersza do drzwi auli (trzy tropy: kronika,
+// pani Wanda, Ola). Akt 2 - Sala pod zegarem: zeszyt Janka, dyrektor.
+// Akt 3 - Szyfr i prawda: 7 zakończeń. Rozgrywka: ok. 6-15 wyborów
+// (8-12 minut). Prawda i postacie - docs/fabula.md.
 
 ## start
 Styczeń, poniedziałek, ósma rano. Na tablicy w sali polskiego ktoś napisał kredą wiersz:
@@ -105,9 +107,9 @@ Na zdjęciu pięciu chłopaków z gitarami na scenie auli. Podpis: zespół Echo
 [kronika_zabrana] Kronika ciąży ci w plecaku. Maciek będzie wściekły, kiedy się zorientuje.
 [maciek_pomaga] "To nie jest zwykły żart" - mówi Maciek. - "Ktoś chce, żeby ktoś coś znalazł. Wchodzę w to."
 
-Na odwrocie zdjęcia ktoś napisał ołówkiem imiona. Jedno jest podkreślone dwa razy: Janek Wrona. Pod spodem dopisek: "Teksty".
+Na odwrocie zdjęcia imiona. Podkreślone dwa razy: "Janek Wrona - teksty". Obok: "Wojtek Zieliński - perkusja".
 
-Ten chłopak pisał teksty. Tak jak ty.
+Ten chłopak pisał teksty. Tak jak ty. A perkusista uczy cię dziś polskiego.
 
 * Idź z tym do pani Wandy -> wanda_1
 * Idź prosto pod drzwi auli -> aula_drzwi
@@ -161,13 +163,135 @@ Po lekcjach szkoła pustoszeje. Stoisz przed wielkimi drzwiami starej auli.
 
 Drzwi są zamknięte od dwudziestu lat. A jednak zza nich dobiega cichy dźwięk. Tik. Tak. Tik.
 
-* [klucz] Przekręć klucz -> ciag_dalszy
-* [!klucz] Przyłóż ucho do drzwi -> ciag_dalszy
-* Zawróć - wrócisz tu jutro -> ciag_dalszy
+* [klucz] Przekręć klucz -> aula
+* [!klucz] Wejdź przez uchylone okienko na zapleczu sceny -> aula +zaplecze
+* Zawróć - to nie twoja sprawa -> koniec_zamknieta
 
-## ciag_dalszy
-[zaufanie_oli] Wieczorem myślisz o Oli. Ona wie więcej, niż mówi. Ale chyba zaczyna ci ufać.
+// --- Akt 2 - Sala pod zegarem ---
 
-Zegar, który stoi od dwudziestu lat, znowu tyka. Ktoś musiał go nakręcić. Albo coś go obudziło.
+## aula
+[zaplecze] Przeciskasz się przez okienko i zeskakujesz między stare dekoracje.
+[klucz] Zamek zgrzyta, ale ustępuje.
 
-> koniec: Ciąg dalszy nastąpi
+W środku kurz, rzędy krzeseł i scena pod szarą kurtyną. Na ścianie wielki zegar. Wahadło kołysze się równo.
+
+Ktoś go nakręcił. W skrzyni zegara, za wahadłem, leży zeszyt: "Teksty. J. Wrona".
+[ola_razem, zaufanie_oli] Ola dotyka okładki i nagle odwraca wzrok.
+
+Na korytarzu kroki. Światło latarki.
+
+* Schowaj zeszyt pod kurtkę i wyjdź mu naprzeciw -> dyrektor_aula
+* Odłóż zeszyt i schowaj się za kurtyną -> koniec_zamknieta
+* [ola_razem] Daj Oli zeszyt - niech ucieka zapleczem -> dyrektor_aula +ola_uciekla
+
+## dyrektor_aula
+W drzwiach staje dyrektor Kowal. Patrzy na tykający zegar i blednie.
+[ola_uciekla] Ola zdążyła zniknąć na zapleczu.
+[kuba_wie] "Słyszałem, jak Kuba krzyczał o ukrytym słowie" - mówi.
+
+"To ty piszesz te wiersze?" - pyta cicho.
+
+* Powiedz, że nie ty - ktoś chce, żeby ta sala przemówiła -> szyfr
+* Zapytaj, czego tak się boi -> szyfr +dyrektor_pytany
+* [bartek_patrzy] Powiedz, że to pewnie Bartek - widziałeś, jak się gapił -> koniec_bartek
+* [zielinski_dziwny] Weź wiersze na siebie, żeby chronić pana Zielińskiego -> koniec_autor
+* [ola_razem] Weź wiersze na siebie, żeby chronić Olę -> koniec_autor
+
+// --- Akt 3 - Szyfr i prawda ---
+
+## szyfr
+Dyrektor kazał ci tylko wyjść. Wieczorem otwierasz zeszyt Janka.
+[ola_uciekla] Ola przyniosła go zdyszana pod twój blok.
+
+| Świece zgasły i na scenie zapadł mrok,
+| ktoś się śmiał, a potem było cicho.
+| Ja wziąłem winę zamiast cudzych słów.
+| Prawdę znajdzie ten, kto umie czytać od końca.
+| Zostawiam ci tę piosenkę. Mnie już nie żal.
+
+Na marginesie zegar ze wskazówkami narysowanymi wstecz.
+
+* Przeczytaj pierwsze litery wersów, jak w pierwszym wierszu -> szyfr_zle +proba_pierwsze
+* Przeczytaj ostatnie litery wersów -> prawda
+* Przeczytaj piosenkę od końca, słowo po słowie -> szyfr_zle +proba_tyl
+
+## szyfr_zle
+[proba_pierwsze] Ś, K, J, P, Z. Nic z tego nie wychodzi.
+[proba_tyl] Żal, już, nie, mnie, piosenkę... Same słowa, żadnej tajemnicy.
+
+Patrzysz na zegar na marginesie. Wskazówki idą wstecz. Od końca... ale od końca czego?
+
+* Spróbuj jeszcze raz -> szyfr -proba_pierwsze -proba_tyl
+
+## prawda
+K, O, W, A, L. Kowal.
+
+Na ostatniej stronie Janek opisał tamtą noc: ktoś wygłupiał się na scenie i przewrócił sztandar szkoły na świece. Ten ktoś to dzisiejszy dyrektor. A Janek wziął winę na siebie.
+[dyrektor_pytany] Teraz wiesz, czego bał się w auli.
+[ola_razem, zaufanie_oli] Dzwoni Ola. "Janek Wrona to mój tata" - mówi cicho. - "Nigdy mi nie powiedział, dlaczego odszedł."
+
+Do studniówki tydzień. Co zrobisz z prawdą?
+
+* Porozmawiaj z dyrektorem w cztery oczy -> koniec_ballada
+* Przeczytaj wszystko na głos na studniówce -> koniec_scena
+* Oddaj zeszyt panu Zielińskiemu -> koniec_cicha
+* [ola_razem] Daj zeszyt Oli - niech opisze to w "Dzwonku" -> koniec_dzwonek
+
+// --- Zakończenia (tekst krótszy - pod nim tytuł i licznik zakończeń) ---
+
+## koniec_ballada
+Dyrektor długo milczy. Na studniówce sam wychodzi na scenę i mówi szkole prawdę o 1983 roku.
+
+Zespół gra piosenkę Janka. Ostatnią zwrotkę dopisałeś ty.
+[ola_razem, zaufanie_oli] W drzwiach auli staje siwy mężczyzna. Janek. Ola bierze cię za rękę.
+[ola_razem, !zaufanie_oli] Ola co chwilę patrzy na drzwi, jakby na kogoś czekała.
+[!ola_razem] Tylko drzwi auli zostają puste. Ktoś jeszcze powinien to usłyszeć.
+
+> koniec: Ballada wraca
+
+## koniec_scena
+Na studniówce wchodzisz na scenę i czytasz piosenkę Janka. Potem mówisz, co w niej ukryto.
+
+Sala milknie. Dyrektor wychodzi bez słowa. Prawda wyszła na jaw, ale bal już się nie klei.
+[ola_razem] Ola nie jest pewna, czy tak było trzeba.
+
+> koniec: Prawda na scenie
+
+## koniec_cicha
+Pan Zieliński długo czyta zeszyt. "To ja pisałem wiersze" - przyznaje. - "Grałem z Jankiem w Echu."
+
+Tydzień później aula zostaje, a zespół gra na studniówce. Ale czy wiesz już wszystko?
+
+> koniec: Cicha sprawiedliwość
+
+## koniec_bartek
+Dyrektor wzywa Bartka. Okazuje się, że Bartek kombinował tylko przy składce na studniówkę.
+
+Wiersze się urywają, aula idzie do przebudowy. Kuba długo się do ciebie nie odzywa.
+
+Rok później w twojej szafce leży nowy wiersz...
+
+> koniec: Nie ten trop
+
+## koniec_zamknieta
+Aula zostaje zamknięta. Po studniówce robotnicy wynoszą z niej wszystko, razem ze starym zegarem.
+
+Na balu grasz z Kubą nową piosenkę. O tym, czego już nie da się odzyskać.
+
+> koniec: Zamknięta sala
+
+## koniec_autor
+Mówisz, że to ty pisałeś wiersze. Dyrektor zakazuje ci występu na studniówce.
+[zielinski_dziwny] Pan Zieliński kiwa ci głową z daleka.
+[ola_razem] Ola ściska twoją dłoń. Wie, kogo chronisz.
+
+Na balu zespół gra twoją piosenkę. Wszyscy wiedzą, czyja jest. A zeszyt Janka czeka w szufladzie.
+
+> koniec: Autor wierszy
+
+## koniec_dzwonek
+Ola publikuje w "Dzwonku" wszystko: piosenkę, szyfr i nazwisko dyrektora. Szkoła huczy.
+[zaufanie_oli] Na studniówce Ola tańczy z tobą. "Napisaliśmy to razem" - mówi.
+[!zaufanie_oli] Twoje nazwisko nie pada w artykule. Ola mija cię na korytarzu bez słowa.
+
+> koniec: Na pierwszej stronie

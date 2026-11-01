@@ -63,3 +63,13 @@ Ok. 15-20 wyborów na rozgrywkę, ścieżki rozchodzą się i zbiegają w trzech
 
 Po zakończeniu: "Odkryłeś 3 z 7 zakończeń" i podpowiedź, czego jeszcze nie wiesz (np. "Kto naprawdę pisał wiersze?").
 
+## Wersja PoC (napisana 2026-11-01)
+
+Decyzja: gra ma sprawdzić pomysł - **krótsza (8-12 minut), ale kompletna**, z całą tajemnicą i wszystkimi 7 zakończeniami; jakość ważniejsza niż długość. Rozbudowa (dłuższe akty, Bartek jako pełny wątek, scena studniówki) - jeśli gra się spodoba.
+
+- **27 scen; 10-16 scen do głównych zakończeń** (6-14 do krótszych). Akt 1 bez zmian; akty 2 i 3 skrócone do 5 scen: `aula` → `dyrektor_aula` → `szyfr` → `prawda` → zakończenie.
+- **Szyfr - prawdziwa zagadka na słuch:** ostatnia piosenka Janka, 5 wersów; ostatnie litery wersów dają KOWAL. Pierwszy wiersz (Zieliński) był akrostychem - gracz, który powtórzy ten sposób, dostaje bełkot. Podpowiedzi: wers „Prawdę znajdzie ten, kto umie czytać od końca” i zegar ze wskazówkami narysowanymi wstecz. Zła odpowiedź → `szyfr_zle` → można próbować dalej.
+- **Zeszyt** leży w skrzyni zegara (zegar nakręcił Zieliński - pani Wanda mu otworzyła; mówi o tym zakończenie „Cicha sprawiedliwość”).
+- **Sekret Oli** bez osobnej flagi: Ola była z tobą w auli (`ola_razem`) i ci ufa (`zaufanie_oli`) → dzwoni po rozszyfrowaniu, a w „Ballada wraca” Janek staje w drzwiach. Bez tego te same zakończenia podpowiadają, że czegoś brakuje.
+- **Zakończenia - skąd:** Zamknięta sala (zawracasz spod drzwi albo zostawiasz zeszyt), Nie ten trop / Autor wierszy (odpowiedź dyrektorowi w auli), Ballada wraca / Prawda na scenie / Cicha sprawiedliwość / Na pierwszej stronie (co zrobisz z prawdą).
+
