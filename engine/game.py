@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Callable
 
 from .scenario import Scenario
+from .voice import ending_label
 
 # text -> {"url", "duration"} of its recording, or None (engine.voice.Recordings)
 Audio = Callable[[str], "dict | None"]
@@ -45,10 +46,18 @@ class Game:
             raise GameError(f"Nie ma sceny {scene_id!r}.")
         return scene
 
+    def _ending(self, scene) -> dict | None:
+        if not scene.ending:
+            return None
+        endings = list(self.scenario.endings)
+        number = endings.index(scene.id) + 1
+        label = ending_label(number, len(endings))
+        return {"id": scene.id, "title": scene.ending, "number": number, "total": len(endings),
+                "audio": self.audio(scene.ending), "label": label, "label_audio": self.audio(label)}
+
     def _enter(self, scene_id: str, flags: set[str]) -> dict:
         scene = self._scene(scene_id)
         flags = scene.enter(flags)
-        endings = list(self.scenario.endings)
         return {
             "scene": scene.id,
             "text": scene.render(flags),
@@ -57,9 +66,6 @@ class Game:
             "image": scene.image,
             "options": [{"number": i, "text": o.text, "audio": self.audio(o.text)}
                         for i, o in enumerate(scene.visible_options(flags), start=1)],
-            "ending": {"id": scene.id, "title": scene.ending,
-                       "number": endings.index(scene.id) + 1, "total": len(endings),
-                       "audio": self.audio(scene.ending)}
-                      if scene.ending else None,
+            "ending": self._ending(scene),
             "state": {"scene": scene.id, "flags": sorted(flags)},
         }

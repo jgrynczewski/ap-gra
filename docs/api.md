@@ -6,7 +6,7 @@ Cienka warstwa nad silnikiem (`api/app.py` → `engine.Game`). Na komputerze z A
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/health` | - | `{"ok": true, "title", "endings", "recordings"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań |
+| `GET /v1/health` | - | `{"ok": true, "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
 | `POST /v1/start` | - | widok pierwszej sceny |
 | `POST /v1/choose` | `{"state": {...}, "option": 2}` | widok następnej sceny |
 | `GET /v1/audio/<nazwa>.wav` | - | nagranie (adres z widoku) |
@@ -37,11 +37,24 @@ Błąd (nieznana scena, opcja spoza listy, gra skończona) → HTTP 400 `{"error
 - `text` - tekst już dla stanu gracza (linie zależne od flag rozstrzygnięte); `\n\n` - nowy akapit, `\n` - nowy wers.
 - `lines` - ten sam tekst w kawałkach do czytania: każda linia scenariusza osobno, z nagraniem. `before` - co przed nią: `""` (pierwsza), `" "` (ten sam akapit), `"\n"` (nowy wers), `"\n\n"` (nowy akapit); sklejenie `before + text` daje `text`.
 - `audio` - `{"url", "duration"}` (sekundy) albo `null`, gdy nagrania nie ma (gra działa i bez nich). `duration` - do efektu pisania tekstu w takt czytania.
-- **Odtwarzanie:** linie po kolei; nagranie nie ma ciszy na końcu - klient robi przerwę: między liniami ok. 0,6 s (jak między zdaniami w nagraniu), przed nowym akapitem ok. 1 s.
-- `options` - tylko widoczne; `number` podaje się w `/v1/choose`; `audio` - do czytania opcji przy skanowaniu.
-- `ending` - przy zakończeniu `{"id", "title", "number", "total", "audio"}` (np. zakończenie 3 z 7; `audio` - nagranie tytułu), `options` puste. Które zakończenia gracz już odkrył - zapisuje klient (na komputerze gracza).
+- **Odtwarzanie tekstu sceny:** linie po kolei; nagranie nie ma ciszy na końcu - klient robi przerwę: między liniami ok. 0,6 s (jak między zdaniami w nagraniu), przed nowym akapitem ok. 1 s.
+- `options` - tylko widoczne; `number` podaje się w `/v1/choose`; `audio` - czytane, gdy skanowanie dojdzie do przycisku opcji (każda opcja to osobny przycisk).
+- `ending` - przy zakończeniu `{"id", "title", "number", "total", "audio", "label", "label_audio"}`: `audio` - nagranie tytułu, `label` - "Zakończenie trzecie z siedmiu." (liczby słowami, żeby głos przeczytał je poprawnie) z nagraniem `label_audio`; `options` puste. Które zakończenia gracz już odkrył - zapisuje klient (na komputerze gracza).
 - `state` - zapis gry: klient zapisuje go po każdym wyborze i może wrócić do gry po restarcie komputera (`docs/zalozenia.md` → "Zapis gry").
 - `image` - na później (grafika sceny).
+
+## Przyciski planszy
+
+Poza opcjami plansza ma stałe przyciski - też czytane głosem narratora. `GET /v1/health` → `"interface"`:
+
+```json
+{"powtorz": {"text": "Powtórz", "audio": {"url": "...", "duration": 0.8}},
+ "wyjdz": {"text": "Wyjdź z gry", "audio": {...}},
+ "kontynuuj": {"text": "Kontynuuj", "audio": {...}},
+ "nowa_gra": {"text": "Nowa gra", "audio": {...}}}
+```
+
+Lista - `engine/voice.py` (`INTERFACE`); nowy przycisk = nowy wpis, nagranie powstaje przy budowaniu.
 
 ## Nagrania
 

@@ -40,7 +40,14 @@ class VoiceTest(unittest.TestCase):
     def test_texts(self):
         texts = voice.texts(parse(SAMPLE))
         self.assertEqual(texts, ["Pierwsze zdanie.", "Drugie w tym samym akapicie.", "Wers jeden,",
-                                 "wers dwa.", "Tylko z flagą.", "Dalej", "Koniec.", "Finał"])
+                                 "wers dwa.", "Tylko z flagą.", "Dalej", "Koniec.", "Finał",
+                                 "Zakończenie pierwsze z jednego.",
+                                 *voice.INTERFACE.values()])
+
+    def test_ending_label(self):
+        self.assertEqual(voice.ending_label(3, 7), "Zakończenie trzecie z siedmiu.")
+        self.assertEqual(voice.ending_label(2, 2), "Zakończenie drugie z dwóch.")
+        self.assertEqual(voice.ending_label(14, 20), "Zakończenie 14 z 20.")
 
     def test_key_depends_on_text_and_voice(self):
         self.assertEqual(voice.key("Ala"), voice.key("Ala"))

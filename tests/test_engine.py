@@ -115,7 +115,9 @@ class GameTest(unittest.TestCase):
         self.assertEqual(view["image"], "sala.png")
         view = self.game.choose(view["state"], 1)
         self.assertEqual(view["ending"], {"id": "koniec_dobry", "title": "Dobre zakończenie",
-                                          "number": 1, "total": 1, "audio": None})
+                                          "number": 1, "total": 1, "audio": None,
+                                          "label": "Zakończenie pierwsze z jednego.",
+                                          "label_audio": None})
         self.assertEqual(view["options"], [])
 
     def test_option_effects_and_reaction_text(self):

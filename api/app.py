@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from engine.game import Game, GameError
 from engine.scenario import load
-from engine.voice import Recordings
+from engine.voice import INTERFACE, Recordings
 
 ROOT = Path(__file__).resolve().parent.parent
 SCENARIO = Path(os.environ.get("AP_GRA_SCENARIO", ROOT / "scenariusz" / "sala_pod_zegarem.md"))
@@ -51,7 +51,10 @@ def game_error(request: Request, error: GameError) -> JSONResponse:
 @app.get("/v1/health")
 def health() -> dict:
     return {"ok": True, "title": game.scenario.title, "endings": len(game.scenario.endings),
-            "recordings": len(recordings.durations)}
+            "recordings": len(recordings.durations),
+            # Buttons of the game board, read in the narrator's voice
+            "interface": {name: {"text": text, "audio": recordings(text)}
+                          for name, text in INTERFACE.items()}}
 
 
 @app.post("/v1/start")

@@ -46,7 +46,9 @@ class ApiTest(unittest.TestCase):
         self.assertIn("zart", view["state"]["flags"])
 
     def test_audio(self):
-        self.assertEqual(self.client.get("/v1/health").json()["recordings"], 1)
+        health = self.client.get("/v1/health").json()
+        self.assertEqual(health["recordings"], 1)
+        self.assertEqual(health["interface"]["powtorz"], {"text": "Powtórz", "audio": None})
         view = self.client.post("/v1/start").json()
         audio = view["options"][0]["audio"]
         self.assertEqual(audio["duration"], 1.25)

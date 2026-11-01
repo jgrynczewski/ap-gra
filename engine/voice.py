@@ -22,6 +22,28 @@ LENGTH_SCALE = 1.2  # 20% slower than the model's default
 SENTENCE_SILENCE = 0.6  # seconds between sentences inside one recording
 
 
+# Texts outside the scenario, read in the same voice: buttons of the game
+# board in the client. Id -> text; the API gives them in /v1/health.
+INTERFACE = {
+    "powtorz": "Powtórz",
+    "wyjdz": "Wyjdź z gry",
+    "kontynuuj": "Kontynuuj",
+    "nowa_gra": "Nowa gra",
+}
+
+_ORDINALS = ["pierwsze", "drugie", "trzecie", "czwarte", "piąte", "szóste", "siódme", "ósme",
+             "dziewiąte", "dziesiąte", "jedenaste", "dwunaste"]
+_OF = ["jednego", "dwóch", "trzech", "czterech", "pięciu", "sześciu", "siedmiu", "ośmiu",
+       "dziewięciu", "dziesięciu", "jedenastu", "dwunastu"]
+
+
+def ending_label(number: int, total: int) -> str:
+    """"Zakończenie trzecie z siedmiu." - words, so the voice reads it right."""
+    if total > len(_OF):
+        return f"Zakończenie {number} z {total}."
+    return f"Zakończenie {_ORDINALS[number - 1]} z {_OF[total - 1]}."
+
+
 def key(text: str) -> str:
     """File name (without .wav) of the recording of this text."""
     settings = f"{VOICE}|{LENGTH_SCALE}|{SENTENCE_SILENCE}|{text}"
@@ -29,8 +51,10 @@ def key(text: str) -> str:
 
 
 def texts(scenario: Scenario) -> list[str]:
-    """Everything the narrator reads, without repeats, in file order."""
+    """Everything the narrator reads, without repeats: the scenario in file
+    order, ending labels, interface buttons."""
     found: dict[str, None] = {}
+    endings = list(scenario.endings)
     for scene in scenario.scenes.values():
         for paragraph in scene.paragraphs:
             for line in paragraph:
@@ -39,6 +63,10 @@ def texts(scenario: Scenario) -> list[str]:
             found[option.text] = None
         if scene.ending:
             found[scene.ending] = None
+    for number in range(1, len(endings) + 1):
+        found[ending_label(number, len(endings))] = None
+    for text in INTERFACE.values():
+        found[text] = None
     return [text for text in found if text.strip()]
 
 
