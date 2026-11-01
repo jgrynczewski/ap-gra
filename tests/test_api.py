@@ -1,10 +1,20 @@
 """HTTP API tests (needs requirements-dev.txt; skipped without fastapi)."""
 
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from engine import voice  # noqa: E402
+from tests.test_voice import write_wav  # noqa: E402
+
+# One fake recording (option 1 of the first scene), read when the app loads
+AUDIO = tempfile.mkdtemp()
+write_wav(Path(AUDIO) / f"{voice.key('Powiedz o tym Kubie')}.wav", 1.25)
+os.environ["AP_GRA_AUDIO"] = AUDIO
 
 try:
     from fastapi.testclient import TestClient
@@ -34,6 +44,16 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(view["scene"], "radiowezel")
         self.assertIn("chichocze", view["text"])
         self.assertIn("zart", view["state"]["flags"])
+
+    def test_audio(self):
+        self.assertEqual(self.client.get("/v1/health").json()["recordings"], 1)
+        view = self.client.post("/v1/start").json()
+        audio = view["options"][0]["audio"]
+        self.assertEqual(audio["duration"], 1.25)
+        self.assertIsNone(view["options"][1]["audio"])
+        response = self.client.get(audio["url"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content[:4], b"RIFF")
 
     def test_errors(self):
         state = self.client.post("/v1/start").json()["state"]

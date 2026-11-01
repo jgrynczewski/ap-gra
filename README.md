@@ -10,7 +10,9 @@ Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): s
 ## Struktura
 
 ```
-engine/              silnik (Python 3, bez UI): scenario.py - format, game.py - gra, check.py - sprawdzanie
+engine/              silnik (Python 3, bez UI): scenario.py - format, game.py - gra, check.py - sprawdzanie,
+                     voice.py - głos narratora i nazwy nagrań
+tools/nagraj.py      nagrania Piperem (w trakcie budowania obrazu Docker)
 api/                 HTTP API (FastAPI) - cienka warstwa nad silnikiem, bez sesji
 scenariusz/          scenariusze (*.md)
 play.py              granie w terminalu - do pisania i testowania fabuły
@@ -19,7 +21,7 @@ docs/                założenia, fabuła, format, API
 Dockerfile, docker-compose.yml   kontener na komputer z AP (port 8766, obok huba IoT)
 ```
 
-Dalej (`docs/zalozenia.md` → "Technologia"): nagrania Piperem generowane z góry, front w AP (moduł z planszą i skanowaniem), później front w przeglądarce.
+Dalej (`docs/zalozenia.md` → "Technologia"): front w AP (moduł z planszą i skanowaniem), później front w przeglądarce.
 
 ## Użycie
 

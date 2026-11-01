@@ -74,21 +74,24 @@ class Scene:
     def visible_options(self, flags: set[str]) -> list[Option]:
         return [o for o in self.options if o.visible(flags)]
 
+    def lines(self, flags: set[str]) -> list[tuple[str, Line]]:
+        """Lines shown for these flags, each with the separator before it:
+        "" (first), " " (same paragraph), "\\n" (verse), "\\n\\n" (new paragraph)."""
+        result: list[tuple[str, Line]] = []
+        for paragraph in self.paragraphs:
+            shown = [line for line in paragraph if _met(line.conditions, flags)]
+            for i, line in enumerate(shown):
+                if i == 0:
+                    before = "\n\n" if result else ""
+                else:
+                    before = "\n" if line.verse or shown[i - 1].verse else " "
+                result.append((before, line))
+        return result
+
     def render(self, flags: set[str]) -> str:
         """Text for these flags: lines joined into paragraphs, verse lines
         and paragraphs (blank line) kept apart."""
-        result = []
-        for paragraph in self.paragraphs:
-            lines = [line for line in paragraph if _met(line.conditions, flags)]
-            text = ""
-            for i, line in enumerate(lines):
-                if i == 0:
-                    text = line.text
-                else:
-                    text += ("\n" if line.verse or lines[i - 1].verse else " ") + line.text
-            if text:
-                result.append(text)
-        return "\n\n".join(result)
+        return "".join(before + line.text for before, line in self.lines(flags))
 
     def text_conditions(self) -> list[str]:
         return [flag for p in self.paragraphs for line in p for flag, _ in line.conditions]

@@ -7,7 +7,12 @@ terminal, the HTTP API and later a browser, locally or in the cloud.
 
 from __future__ import annotations
 
+from typing import Callable
+
 from .scenario import Scenario
+
+# text -> {"url", "duration"} of its recording, or None (engine.voice.Recordings)
+Audio = Callable[[str], "dict | None"]
 
 
 class GameError(Exception):
@@ -15,8 +20,9 @@ class GameError(Exception):
 
 
 class Game:
-    def __init__(self, scenario: Scenario):
+    def __init__(self, scenario: Scenario, audio: Audio | None = None):
         self.scenario = scenario
+        self.audio = audio or (lambda text: None)
 
     def start(self) -> dict:
         return self._enter(self.scenario.start, set())
@@ -46,11 +52,14 @@ class Game:
         return {
             "scene": scene.id,
             "text": scene.render(flags),
+            "lines": [{"before": before, "text": line.text, "audio": self.audio(line.text)}
+                      for before, line in scene.lines(flags)],
             "image": scene.image,
-            "options": [{"number": i, "text": o.text}
+            "options": [{"number": i, "text": o.text, "audio": self.audio(o.text)}
                         for i, o in enumerate(scene.visible_options(flags), start=1)],
             "ending": {"id": scene.id, "title": scene.ending,
-                       "number": endings.index(scene.id) + 1, "total": len(endings)}
+                       "number": endings.index(scene.id) + 1, "total": len(endings),
+                       "audio": self.audio(scene.ending)}
                       if scene.ending else None,
             "state": {"scene": scene.id, "flags": sorted(flags)},
         }
