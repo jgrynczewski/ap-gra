@@ -152,6 +152,20 @@ Dzwoni dzwonek.
             self.game.choose({"scene": "koniec_dobry", "flags": []}, 1)
 
 
+class ScreenTest(unittest.TestCase):
+    def test_wrapping_and_gaps(self):
+        from engine import screen
+        self.assertEqual(screen.wrapped_lines("a " * 10, width=10), 2)
+        self.assertEqual(screen.wrapped_lines(""), 1)
+        # 2 paragraphs (1 line + 2 verses) = 3 lines + half a line between
+        self.assertEqual(screen.text_lines("Ala.\n\nWers\nwers"), 3.5)
+
+    def test_too_long_scene(self):
+        long = " ".join(["słowo"] * 120)  # ~720 characters - about 13 lines
+        report = check(parse(f"# T\n## a\n{long}\n* x -> b\n## b\nKoniec.\n> koniec: K\n"))
+        self.assertTrue(any("tekst za długi" in e for e in report.errors), report.errors)
+
+
 class CheckTest(unittest.TestCase):
     def test_small_scenario_is_fine(self):
         report = check(parse(SMALL))

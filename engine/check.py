@@ -12,6 +12,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from .scenario import MAX_OPTIONS, Scenario, ScenarioError, load
+from .screen import LINE_CHARS, MAX_LINES, scene_lines
 
 MAX_STATES = 200_000  # (scene, flags) combinations - guard against flag explosion
 
@@ -78,10 +79,14 @@ def check(scenario: Scenario) -> Report:
     edges: dict[tuple, list[tuple]] = {}
     queue = deque([start])
     stuck_reported, crowded_reported = set(), set()
+    longest: dict[str, tuple[float, frozenset]] = {}  # scene -> most screen lines, flags
     while queue:
         state = queue.popleft()
         scene_id, flags = state
         scene = scenes[scene_id]
+        lines = scene_lines(scene, set(flags))
+        if lines > longest.get(scene_id, (-1, None))[0]:
+            longest[scene_id] = (lines, flags)
         options = scene.visible_options(set(flags))
         if not scene.ending and not options and scene.options and scene_id not in stuck_reported:
             stuck_reported.add(scene_id)
@@ -105,6 +110,14 @@ def check(scenario: Scenario) -> Report:
                     return report
                 depth[nxt] = depth[state] + 1
                 queue.append(nxt)
+
+    # The whole text must fit on the screen (engine/screen.py)
+    for scene_id, (lines, flags) in longest.items():
+        if lines > MAX_LINES:
+            report.errors.append(
+                f"{_where(scenes[scene_id])}: tekst za długi - {lines:g} linii ekranu przy "
+                f"{_flags_text(flags)} (max {MAX_LINES} po ok. {LINE_CHARS} znaków; "
+                f"przerwa między akapitami = pół linii)")
 
     reached = {scene_id for scene_id, _ in depth}
     for scene in scenes.values():
@@ -137,10 +150,18 @@ def check(scenario: Scenario) -> Report:
         "zakończenia": len(scenario.endings),
         "sceny z jedną opcją": f"{len(single)} z {len(scenes) - len(scenario.endings)}",
         "stany (scena + flagi)": len(depth),
+        "najdłuższy tekst (linie ekranu)": _longest_text(longest),
         "najkrótsza rozgrywka (wybory)": min(ending_depths) if ending_depths else None,
         "najdłuższa rozgrywka (wybory)": _longest(start, edges, scenes),
     }
     return report
+
+
+def _longest_text(longest) -> str | None:
+    if not longest:
+        return None
+    scene_id, (lines, _) = max(longest.items(), key=lambda item: item[1][0])
+    return f"{lines:g} z {MAX_LINES} ({scene_id})"
 
 
 def _longest(start, edges, scenes):

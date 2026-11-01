@@ -25,6 +25,8 @@ FROM base AS audio
 COPY requirements-audio.txt .
 RUN pip install --no-cache-dir -r requirements-audio.txt
 COPY tools tools
+# A scenario with errors (e.g. a scene text too long for the screen) stops the build
+RUN python -m engine.check scenariusz/*.md
 RUN --mount=type=cache,target=/cache \
     python -m tools.nagraj --models /cache/models --cache /cache/wav --out /app/audio scenariusz/*.md
 

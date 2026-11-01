@@ -58,7 +58,7 @@ class VoiceTest(unittest.TestCase):
         game = Game(load(ROOT / "scenariusz" / "sala_pod_zegarem.md"))
         view = game.start()
         self.assertEqual("".join(l["before"] + l["text"] for l in view["lines"]), view["text"])
-        self.assertEqual([l["before"] for l in view["lines"][:4]], ["", "\n\n", "\n\n", "\n"])
+        self.assertEqual([l["before"] for l in view["lines"][:4]], ["", "\n\n", "\n", "\n"])
 
     def test_view_audio(self):
         with tempfile.TemporaryDirectory() as directory:

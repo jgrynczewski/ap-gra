@@ -48,7 +48,19 @@ Maciek kartkuje kronikę z 1983 roku.
 ## Sprawdzanie (`engine/check.py`)
 
 Przechodzi wszystkie możliwe rozgrywki (sceny razem z flagami) i zgłasza:
-- **błędy:** opcja prowadzi do nieistniejącej sceny; scena bez opcji, która nie jest zakończeniem; sytuacja, w której żadna opcja nie jest widoczna (gracz utknął); więcej niż 4 widoczne opcje naraz; scena lub zakończenie, do którego nie da się dojść;
+- **błędy:** opcja prowadzi do nieistniejącej sceny; scena bez opcji, która nie jest zakończeniem; sytuacja, w której żadna opcja nie jest widoczna (gracz utknął); więcej niż 4 widoczne opcje naraz; scena lub zakończenie, do którego nie da się dojść; **tekst sceny za długi na ekran**;
 - **uwagi:** flaga sprawdzana, ale nigdzie nie ustawiana (lub odwrotnie); powtórzony tekst opcji w scenie; dwie sceny z jedną opcją pod rząd.
 
-Na koniec statystyki: liczba scen, zakończeń, najkrótsza i najdłuższa rozgrywka (w wyborach).
+Na koniec statystyki: liczba scen, zakończeń, najdłuższy tekst, najkrótsza i najdłuższa rozgrywka (w wyborach).
+
+**Błąd = obraz się nie zbuduje** (`docker compose up -d --build` sprawdza scenariusz przed nagrywaniem).
+
+## Długość tekstu sceny
+
+Gracz nie przewija - cały tekst sceny musi zmieścić się na ekranie gry w AP (obok scenki z zegarem, nad 4 opcjami). Limit (`engine/screen.py`): **10 linii ekranu po ok. 55 znaków**. Liczy się:
+- akapit - tyle linii, na ile zawinie się po 55 znaków; wers (`| `) - osobno, każdy od nowej linii;
+- przerwa między akapitami - pół linii;
+- zakończenie - dodatkowo 3,5 linii (tytuł, „Zakończenie … z …”, odkryte zakończenia);
+- linie warunkowe - liczy się najdłuższy wariant, jaki gracz może zobaczyć.
+
+Przykład na granicy limitu - scena `start`: akapit (2 linie) + wiersz (5 wersów) + akapit (2 linie) + 2 przerwy = 10. Gdyby tekst jednak się nie zmieścił (inna rozdzielczość ekranu), AP lekko zmniejszy czcionkę.

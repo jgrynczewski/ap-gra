@@ -4,9 +4,7 @@
 // auli. Dalej - zarys w docs/fabula.md.
 
 ## start
-Styczeń, poniedziałek, ósma rano. Do studniówki zostały cztery tygodnie, a w klasie pachnie mokrymi kurtkami.
-
-Na tablicy w sali polskiego ktoś napisał kredą wiersz:
+Styczeń, poniedziałek, ósma rano. Na tablicy w sali polskiego ktoś napisał kredą wiersz:
 
 | Z kurzu i mroku wstanie dawna pieśń.
 | Echem powróci to, co w ciszy zgasło.
@@ -14,7 +12,7 @@ Na tablicy w sali polskiego ktoś napisał kredą wiersz:
 | A drzwi zamknięto, by ukryć hasło.
 | Rozpoznasz drogę, jeśli umiesz czytać.
 
-Klasa się śmieje. A ty widzisz coś, czego nie widzi nikt: pierwsze litery wersów układają się w słowo "zegar".
+Klasa się śmieje. A ty widzisz, że pierwsze litery wersów układają się w słowo "zegar".
 
 * Powiedz o tym Kubie -> kuba_1
 * Powiedz Oli, która stoi przy oknie -> ola_1
@@ -50,16 +48,16 @@ Pan Zieliński wchodzi do klasy, widzi wiersz i staje. Trwa to tylko chwilę, al
 * Nic nie mów i patrz, co zrobi -> radiowezel
 
 ## radiowezel
-[bartek_patrzy] Kątem oka widzisz, że Bartek, przewodniczący samorządu, długo patrzy na tablicę. Kiedy zauważa, że go obserwujesz, szybko odwraca wzrok.
+[bartek_patrzy] Kątem oka widzisz, że Bartek z samorządu długo patrzy na tablicę, a potem szybko odwraca wzrok.
 [zart] Klasa jeszcze chichocze z twojego żartu o poecie-widmie.
 [ola_unika] Ola zbyła twoje pytanie: "Po prostu wiem". I od tej pory nie patrzy ci w oczy.
 [zielinski_pytany] "Wiersze piszą się same, Wieszczu" - odpowiedział pan Zieliński. I nie powiedział nic więcej.
 
-Na dużej przerwie trzeszczy radiowęzeł. Dyrektor Kowal ogłasza, że po studniówce stara aula zostanie opróżniona i przebudowana.
+Na przerwie trzeszczy radiowęzeł. Dyrektor Kowal ogłasza, że po studniówce stara aula pójdzie do przebudowy.
 
-"A szkolny zespół na studniówce nie zagra" - dodaje. - "Ktoś w tej szkole bazgrze wierszyki po tablicach. Dopóki się to nie skończy, żadnej muzyki."
+"I żadnej muzyki na studniówce, dopóki ktoś bazgrze wierszyki po tablicach" - dodaje.
 
-Kuba blednie. To jego zespół. A ty grasz w nim swoimi tekstami.
+Kuba blednie. To jego zespół, a ty piszesz mu teksty.
 
 * Pociesz Kubę -> szafka +kuba_przyjaciel
 * Idź do dyrektora i zapytaj, dlaczego akurat aula -> dyrektor_1
@@ -79,7 +77,7 @@ Dyrektor Kowal przyjmuje cię w gabinecie, nie odrywając wzroku od papierów. K
 [kuba_przyjaciel] Kuba trochę odżył. "Coś wymyślimy, Wieszczu. Zawsze coś wymyślamy."
 [dyrektor_zly] Na korytarzu słyszysz za plecami: "Ten od wierszyków podpadł dyrektorowi". Wieść rozeszła się szybko.
 
-Po lekcjach otwierasz szafkę. Na książkach leży złożona kartka:
+Po lekcjach znajdujesz w szafce złożoną kartkę:
 
 | Gdzie echo śpi, tam czas się zatrzymał.
 | Kto zna słowa, ten znajdzie klucz.
