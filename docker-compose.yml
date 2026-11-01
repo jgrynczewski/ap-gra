@@ -2,7 +2,9 @@
 # Starts with the system (restart), reachable only from this computer.
 services:
   ap-gra:
-    build: .
+    build:
+      context: .
+      target: app
     image: ap-gra
     container_name: ap-gra
     restart: unless-stopped

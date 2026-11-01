@@ -4,4 +4,3 @@ venv
 .idea
 __pycache__
 docs
-tests

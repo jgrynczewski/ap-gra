@@ -23,12 +23,12 @@ Dalej (`docs/zalozenia.md` → "Technologia"): nagrania Piperem generowane z gó
 
 ## Użycie
 
-Python 3.12+. Silnik i `play.py` bez dodatkowych pakietów; API - `requirements.txt` (testy API - `requirements-dev.txt`).
+Serwer i testy działają w kontenerze (Python 3.12, wersje pakietów z `requirements*.txt`) - na komputerze potrzebny tylko Docker. `play.py` i sprawdzanie scenariusza - zwykły Python 3, bez pakietów.
 
 ```bash
-python play.py scenariusz/sala_pod_zegarem.md        # zagraj (numer opcji; r - od nowa, q - koniec)
+docker build --target test .                           # testy w kontenerze; build przerywa się przy błędzie
+docker compose up -d --build                           # serwer gry: localhost:8766, start z systemem; dokumentacja: localhost:8766/docs
+docker compose down                                    # zatrzymanie
+python play.py scenariusz/sala_pod_zegarem.md          # zagraj w terminalu (numer opcji; r - od nowa, q - koniec)
 python -m engine.check scenariusz/sala_pod_zegarem.md  # sprawdź scenariusz
-python -m unittest discover -s tests                   # testy (API pomijane bez fastapi)
-uvicorn api.app:app --port 8766 --reload             # API lokalnie; dokumentacja: localhost:8766/docs
-docker compose up -d --build                         # komputer z AP: kontener, start z systemem
 ```

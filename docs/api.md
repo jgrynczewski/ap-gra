@@ -38,5 +38,6 @@ Błąd (nieznana scena, opcja spoza listy, gra skończona) → HTTP 400 `{"error
 ## Uruchomienie
 
 - **Kontener (komputer z AP):** `docker compose up -d --build` - startuje razem z systemem. Po zmianie scenariusza lub kodu: `git pull`, potem to samo polecenie.
-- **Lokalnie (rozwój):** `pip install -r requirements.txt`, potem `uvicorn api.app:app --port 8766 --reload`. Dokumentacja interaktywna: `http://localhost:8766/docs`.
+- **Testy:** `docker build --target test .` - w tym samym obrazie co serwer (Python 3.12, te same pakiety) plus httpx i katalog `tests`; build przerywa się, gdy test nie przejdzie. Obraz serwera (`target: app` w `docker-compose.yml`) nie zawiera testów.
+- Dokumentacja interaktywna: `http://localhost:8766/docs`.
 - Inny scenariusz: zmienna `AP_GRA_SCENARIO` (ścieżka do pliku).
