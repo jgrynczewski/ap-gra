@@ -1,6 +1,8 @@
 # ap-gra
 
-Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): scena → 3-4 opcje wybierane skanowaniem → kolejna scena; rozgałęzienia, zbiegi ścieżek, kilka zakończeń. Pierwsza gra: **"Sala pod zegarem"** - liceum, 2003, tajemnica anonimowych wierszy.
+Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): scena → 3-4 opcje wybierane skanowaniem → kolejna scena; rozgałęzienia, zbiegi ścieżek, kilka zakończeń. Pierwsza gra: **"Sala pod zegarem"** - liceum, 2003, tajemnica anonimowych wierszy. W AP: przycisk **„Tajemnica zegara”** na planszy gier (repo AP, `GRA_PLAN.md`).
+
+**Stan (2026-11-01):** PoC kompletny - 27 scen, 7 zakończeń, 8-12 minut na rozgrywkę; ekran w AP przetestowany na komputerze użytkownika. Dalej: uwagi z grania, rozbudowa tylko, jeśli gra się spodoba.
 
 - Założenia (fabularne i techniczne): [`docs/zalozenia.md`](docs/zalozenia.md)
 - Zarys fabuły: [`docs/fabula.md`](docs/fabula.md)
