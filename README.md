@@ -4,6 +4,7 @@ Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): s
 
 **Stan (2026-11-01):** PoC kompletny - 27 scen, 7 zakończeń, 8-12 minut na rozgrywkę; ekran w AP przetestowany na komputerze użytkownika. Dalej: uwagi z grania, rozbudowa tylko, jeśli gra się spodoba.
 
+- Mapa wszystkich repozytoriów (ap-gra, AP, Wicero), komputery, zasady pracy: `docs/mapa-projektow.md` w repo `wicero`
 - Założenia (fabularne i techniczne): [`docs/zalozenia.md`](docs/zalozenia.md)
 - Zarys fabuły: [`docs/fabula.md`](docs/fabula.md)
 - Format scenariusza: [`docs/format.md`](docs/format.md)
