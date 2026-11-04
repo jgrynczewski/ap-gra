@@ -248,8 +248,16 @@ Nic.
         self.assertIn("5 widoczne opcje", errors)
 
     def test_real_scenario_has_no_errors(self):
-        report = check(load(ROOT / "scenariusz" / "sala_pod_zegarem.md"))
-        self.assertEqual(report.errors, [])
+        for path in sorted((ROOT / "scenariusz").glob("*.md")):
+            with self.subTest(scenario=path.name):
+                report = check(load(path))
+                self.assertEqual(report.errors, [])
+                self.assertEqual(report.warnings, [])
+
+    def test_ostatnia_zwrotka_has_nine_endings_all_reachable(self):
+        report = check(load(ROOT / "scenariusz" / "ostatnia_zwrotka.md"))
+        self.assertEqual(report.stats["zakończenia"], 9)
+        self.assertLessEqual(report.stats["najdłuższa rozgrywka (wybory)"], 15)  # 8-12 minut
 
 
 if __name__ == "__main__":

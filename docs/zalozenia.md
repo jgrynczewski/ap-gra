@@ -36,6 +36,8 @@ Do zrobienia: zarys fabuły (obsada, możliwe prawdy, mapa ścieżek, zakończen
 
 ## Gra 2 - później: willa i klub muzyczny
 
+**2026-11-04: z tego świata powstała gra „Ostatnia zwrotka”** (romans, `scenariusz/ostatnia_zwrotka.md`, zarys `docs/fabula-ostatnia-zwrotka.md`) - willa, basen, klub „Przystań”, bohater pisze teksty. Postacie i klub są wymyślone, bez prawdziwej historii klubu i bez prawdziwych osób. Gra na podstawie prawdziwej historii (niżej) - nadal osobny pomysł na później.
+
 Na podstawie prawdziwej historii gracza - **nie w prototypie, osobna gra**:
 - Wielki dom (willa, ponad 100 pokoi, basen), w którym działał **klub muzyczny Atamay** - gracz był jego członkiem założycielem i pisał teksty piosenek. Do klubu należały też inne osoby z dzielnicy, również z dużymi ograniczeniami ruchowymi. W domu odbywały się bale i próby, zespół dał kilka publicznych koncertów.
 - Teksty pisał z pomocą tablicy z literami: ktoś prowadził palcem po literach, a on dawał znak ruchem przy właściwej - litera po literze, zdanie po zdaniu.

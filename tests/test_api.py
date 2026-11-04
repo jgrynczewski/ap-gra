@@ -65,6 +65,29 @@ class ApiTest(unittest.TestCase):
         response = self.client.post("/v1/view", json={"state": {"scene": "nie_ma", "flags": []}})
         self.assertEqual(response.status_code, 400)
 
+    def test_games(self):
+        body = self.client.get("/v1/games").json()
+        self.assertEqual(body["default"], "sala_pod_zegarem")
+        ids = {g["id"]: g for g in body["games"]}
+        self.assertEqual(ids["ostatnia_zwrotka"]["title"], "Ostatnia zwrotka")
+        self.assertEqual(ids["ostatnia_zwrotka"]["endings"], 9)
+        health = self.client.get("/v1/health", params={"game": "ostatnia_zwrotka"}).json()
+        self.assertEqual(health["title"], "Ostatnia zwrotka")
+
+    def test_second_game_round_trip(self):
+        params = {"game": "ostatnia_zwrotka"}
+        view = self.client.post("/v1/start", params=params).json()
+        self.assertIn("Bigos", view["text"])
+        view = self.client.post("/v1/choose", params=params,
+                                json={"state": view["state"], "option": 2}).json()
+        self.assertEqual(view["scene"], "bigos")
+        again = self.client.post("/v1/view", params=params, json={"state": view["state"]}).json()
+        self.assertEqual(again, view)
+        # The state of one game is not a state of the other
+        response = self.client.post("/v1/view", json={"state": view["state"]})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.post("/v1/start", params={"game": "nie_ma"}).status_code, 404)
+
     def test_errors(self):
         state = self.client.post("/v1/start").json()["state"]
         response = self.client.post("/v1/choose", json={"state": state, "option": 9})

@@ -4,9 +4,12 @@ Cienka warstwa nad silnikiem (`api/app.py` → `engine.Game`). Na komputerze z A
 
 **Bez sesji:** serwer niczego nie pamięta. Każdy widok zawiera `state` - klient trzyma go i odsyła bez zmian razem z wyborem. Dzięki temu ten sam serwer może działać lokalnie albo w chmurze, a klientów (AP, przeglądarka) może być wielu.
 
+**Kilka gier:** każdy plik `scenariusz/*.md` to gra, jej identyfikator to nazwa pliku (`sala_pod_zegarem`, `ostatnia_zwrotka`). Trasy przyjmują `?game=<id>`; bez niego - gra domyślna (`sala_pod_zegarem`, zmienna `AP_GRA_DEFAULT`), więc starsi klienci działają bez zmian. Nieznana gra → 404. Stan (`state`) dotyczy jednej gry - klient trzyma osobny zapis dla każdej.
+
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/health` | - | `{"ok": true, "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
+| `GET /v1/games` | - | `{"default", "games": [{"id", "title", "endings"}]}` - lista gier |
+| `GET /v1/health?game=` | - | `{"ok": true, "game", "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
 | `POST /v1/start` | - | widok pierwszej sceny |
 | `POST /v1/choose` | `{"state": {...}, "option": 2}` | widok następnej sceny |
 | `POST /v1/view` | `{"state": {...}}` | widok sceny z zapisu (kontynuacja gry); zapis niepasujący do scenariusza → 400 |
@@ -71,4 +74,4 @@ Lista - `engine/voice.py` (`INTERFACE`); nowy przycisk = nowy wpis, nagranie pow
 - **Kontener (komputer z AP):** `docker compose up -d --build` - startuje razem z systemem. Po zmianie scenariusza lub kodu: `git pull`, potem to samo polecenie.
 - **Testy:** `docker build --target test .` - w tym samym obrazie co serwer (Python 3.12, te same pakiety) plus httpx i katalog `tests`; build przerywa się, gdy test nie przejdzie. Obraz serwera (`target: app` w `docker-compose.yml`) nie zawiera testów.
 - Dokumentacja interaktywna: `http://localhost:8766/docs`.
-- Inny scenariusz: zmienna `AP_GRA_SCENARIO` (ścieżka do pliku); inny katalog nagrań: `AP_GRA_AUDIO`.
+- Inny katalog scenariuszy: `AP_GRA_SCENARIOS`; gra domyślna: `AP_GRA_DEFAULT`; inny katalog nagrań: `AP_GRA_AUDIO`.

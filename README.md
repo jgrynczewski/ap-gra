@@ -1,8 +1,10 @@
 # ap-gra
 
-Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): scena → 3-4 opcje wybierane skanowaniem → kolejna scena; rozgałęzienia, zbiegi ścieżek, kilka zakończeń. Pierwsza gra: **"Sala pod zegarem"** - liceum, 2003, tajemnica anonimowych wierszy. W AP: przycisk **„Tajemnica zegara”** na planszy gier (repo AP, `GRA_PLAN.md`).
+Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): scena → 3-4 opcje wybierane skanowaniem → kolejna scena; rozgałęzienia, zbiegi ścieżek, kilka zakończeń. Gry (jeden serwer, każda w `scenariusz/<id>.md`):
+- **"Sala pod zegarem"** (`sala_pod_zegarem`) - liceum, 2003, tajemnica anonimowych wierszy. W AP: przycisk **„Tajemnica zegara”** na planszy gier. PoC kompletny (2026-11-01): 27 scen, 7 zakończeń, 8-12 minut; przetestowany w AP.
+- **"Ostatnia zwrotka"** (`ostatnia_zwrotka`, 2026-11-04) - romans: willa z klubem muzycznym, nowa wokalistka Nina wyjeżdża po lecie; gracz pisze dla niej piosenkę (wybiera wersy). 23 sceny, 9 zakończeń (3 wygrane, 3 neutralne, 3 przegrane), 8-12 minut. W AP: osobny przycisk na planszy gier. Zarys: [`docs/fabula-ostatnia-zwrotka.md`](docs/fabula-ostatnia-zwrotka.md).
 
-**Stan (2026-11-01):** PoC kompletny - 27 scen, 7 zakończeń, 8-12 minut na rozgrywkę; ekran w AP przetestowany na komputerze użytkownika. Dalej: uwagi z grania, rozbudowa tylko, jeśli gra się spodoba.
+Repo AP: `GRA_PLAN.md` (instalacja serwera, testy).
 
 - Mapa wszystkich repozytoriów (ap-gra, AP, Wicero), komputery, zasady pracy: `docs/mapa-projektow.md` w repo `wicero`
 - Założenia (fabularne i techniczne): [`docs/zalozenia.md`](docs/zalozenia.md)
