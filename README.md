@@ -11,6 +11,7 @@ Repo AP: `GRA_PLAN.md` (instalacja serwera, testy).
 - Zarys fabuły: [`docs/fabula.md`](docs/fabula.md)
 - Format scenariusza: [`docs/format.md`](docs/format.md)
 - HTTP API: [`docs/api.md`](docs/api.md)
+- Propozycja na później (odłożona): przygodówka z grafiką - [`docs/propozycja-przygodowka-graficzna.md`](docs/propozycja-przygodowka-graficzna.md)
 
 ## Struktura
 
