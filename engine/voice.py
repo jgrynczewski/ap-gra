@@ -30,6 +30,7 @@ INTERFACE = {
     "kontynuuj": "Kontynuuj",
     "nowa_gra": "Nowa gra",
     "wybrales": "Wybrałeś:",  # potwierdzenie wyboru, potem nagranie opcji
+    "dalej": "Dalej",  # plansza GRY PRZYGODOWE: następna strona kafelków
 }
 
 _ORDINALS = ["pierwsze", "drugie", "trzecie", "czwarte", "piąte", "szóste", "siódme", "ósme",
@@ -52,9 +53,10 @@ def key(text: str) -> str:
 
 
 def texts(scenario: Scenario) -> list[str]:
-    """Everything the narrator reads, without repeats: the scenario in file
-    order, ending labels, interface buttons."""
-    found: dict[str, None] = {}
+    """Everything the narrator reads, without repeats: the title (read on the
+    tile of the game), the scenario in file order, ending labels, interface
+    buttons."""
+    found: dict[str, None] = {scenario.title: None}
     endings = list(scenario.endings)
     for scene in scenario.scenes.values():
         for paragraph in scene.paragraphs:

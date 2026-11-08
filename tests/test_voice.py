@@ -39,10 +39,11 @@ def write_wav(path: Path, seconds: float, rate: int = 22050) -> None:
 class VoiceTest(unittest.TestCase):
     def test_texts(self):
         texts = voice.texts(parse(SAMPLE))
-        self.assertEqual(texts, ["Pierwsze zdanie.", "Drugie w tym samym akapicie.", "Wers jeden,",
-                                 "wers dwa.", "Tylko z flagą.", "Dalej", "Koniec.", "Finał",
-                                 "Zakończenie pierwsze z jednego.",
-                                 *voice.INTERFACE.values()])
+        scenario = ["Test", "Pierwsze zdanie.", "Drugie w tym samym akapicie.", "Wers jeden,",
+                    "wers dwa.", "Tylko z flagą.", "Dalej", "Koniec.", "Finał",
+                    "Zakończenie pierwsze z jednego."]
+        # Interface texts already in the scenario ("Dalej") are not repeated
+        self.assertEqual(texts, scenario + [t for t in voice.INTERFACE.values() if t not in scenario])
 
     def test_ending_label(self):
         self.assertEqual(voice.ending_label(3, 7), "Zakończenie trzecie z siedmiu.")

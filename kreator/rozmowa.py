@@ -70,6 +70,7 @@ INTERFACE = {
     "wroc": "Wróć",
     "przerwij": "Przerwij",
     "mysle": "Myślę...",
+    "wybrales": "Wybrałeś:",  # potwierdzenie wyboru - jak w grze (engine/voice.py)
     "blad": "Coś poszło nie tak. Wróć albo przerwij.",
     # Making the game (kreator/tworzenie.py)
     "tworze": "Tworzę grę. To potrwa kilkanaście minut. Gotowa gra pojawi się jako nowy kafelek.",

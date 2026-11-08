@@ -10,7 +10,7 @@ Cienka warstwa nad silnikiem (`api/app.py` → `engine.Game`). Na komputerze z A
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/games` | - | `{"default", "games": [{"id", "title", "endings", "builtin", "kafelek", "animacja"}]}` - lista gier; `builtin` - gra wbudowana (`false` - gra użytkownika); `kafelek`, `animacja` - niżej |
+| `GET /v1/games` | - | `{"default", "games": [{"id", "title", "endings", "builtin", "title_audio", "kafelek", "animacja"}]}` - lista gier; `builtin` - gra wbudowana (`false` - gra użytkownika); `title_audio` - nagranie tytułu (czytane przy skanowaniu kafelka) albo `null`; `kafelek`, `animacja` - niżej |
 | `GET /v1/health?game=` | - | `{"ok": true, "game", "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
 | `POST /v1/start` | - | widok pierwszej sceny |
 | `POST /v1/choose` | `{"state": {...}, "option": 2}` | widok następnej sceny |
@@ -125,7 +125,7 @@ Stan: `{"id", "status", "tekst", "audio", "opcje": [{"numer", "tekst", "audio"}]
 Stan tworzenia: `{"id", "gra", "tytul", "status", "krok", "krok_nr", "krokow", "utworzona"}`.
 
 - `status`: `w_toku`, `gotowa`, `nieudana`; `gra` - identyfikator gry w `/v1/games` (`g` + identyfikator rozmowy, `-` zamienione na `_`); `krok` - bieżący krok (`zarys`, `scenariusz`, `kontrola`, `animacja`, `nagrania`, `publikacja`), przy `nieudana` - krok, na którym się nie udało.
-- Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`.
+- Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`; `wybrales` - „Wybrałeś:” jak w grze.
 - Historia tworzenia (każde zapytanie do AI i odpowiedź, odrzucone scenariusze z błędami, kroki) trafia do tego samego logu co rozmowa: `dane/rozmowy/<id>/log.jsonl`; kopia w grze (`rozmowa.jsonl`).
 
 ## Uruchomienie

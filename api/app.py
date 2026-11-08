@@ -181,6 +181,8 @@ def games() -> dict:
     return {"default": DEFAULT_GAME,
             "games": [{"id": gid, "title": g.scenario.title, "endings": len(g.scenario.endings),
                        "builtin": gid in GAMES,
+                       # Read when scanning reaches the tile of the game
+                       "title_audio": g.audio(g.scenario.title),
                        **({"kafelek": None, "animacja": None} if gid in GAMES else _pictures(gid))}
                       for gid, g in all_games().items()]}
 

@@ -86,12 +86,13 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - Prompt: `kreator/prompty/animacja.md` - bez konkretnego przykładu scenki (żeby nie zawężać pomysłów)
 - Do sprawdzenia w etapie 6/7: płynność odtwarzania i pamięć AP na laptopie
 
-**Etap 6 - AP**
-- [ ] `new_games.py`: kafelek GRY PRZYGODOWE zamiast Tajemnicy i Zwrotki
-- [ ] Plansza GRY PRZYGODOWE z listy gier: kafelki, strony (DALEJ), NOWA GRA, POWRÓT
-- [ ] Plansza rozmowy: pytanie, opcje, WRÓĆ, PRZERWIJ, „Myślę...”
-- [ ] Odtwarzanie animacji w planszy gry
-- [ ] Gra w trakcie tworzenia i nieudana - komunikat głosowy
+**Etap 6 - AP** (kod gotowy 2026-11-08; testy ręczne P1-P13 w `GRA_PLAN.md` w repo AP)
+- [x] `new_games.py`: kafelek GRY PRZYGODOWE (nowa ikona: książka z górami) zamiast Tajemnicy i Zwrotki, obok puste pole
+- [x] Plansza GRY PRZYGODOWE z listy gier (`modules/przygody.py`): siatka 3 x 5 - NOWA GRA, 12 gier na stronę, DALEJ (gdy więcej stron), POWRÓT; lista z serwera przy każdym powrocie na planszę; tytuły czyta narrator (nowe nagrania tytułów w ap-gra)
+- [x] Plansza rozmowy (`modules/kreator.py`): pytanie, opcje, WRÓĆ, PRZERWIJ, „Myślę...”, „Wybrałeś: …”; AP pyta kreator co sekundę. Wspólna część z planszą gry wydzielona w `modules/gra.py` (`NarratedBoard`)
+- [x] Odtwarzanie animacji w planszy gry (`modules/scenka.py` → `FramesScene`): klatki pobierane raz do `~/.ap-gra/gry/<id>/`, w pamięci tylko pliki, bieżąca klatka dekodowana przy zmianie
+- [x] Gra w trakcie tworzenia i nieudana - kafelek z napisem i komunikat głosowy; nieudana widoczna 3 dni
+- Sprawdzone tutaj: kompilacja Pythonem 2.7 i pyflakes; klienci AP (`gra_client`, `kreator_client`) z prawdziwymi usługami ap-gra w kontenerze. Interfejsu wx nie da się tu uruchomić - plansze sprawdzą testy ręczne
 
 **Etap 7 - uruchomienie (Ty)**
 - [ ] Klucz API i limit kosztów na koncie
