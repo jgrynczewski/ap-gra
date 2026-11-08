@@ -11,15 +11,20 @@ Repo AP: `GRA_PLAN.md` (instalacja serwera, testy).
 - Zarys fabuły: [`docs/fabula.md`](docs/fabula.md)
 - Format scenariusza: [`docs/format.md`](docs/format.md)
 - HTTP API: [`docs/api.md`](docs/api.md)
+- Tworzenie gier przez użytkownika AP z pomocą AI (w budowie): [`docs/kreator-gier.md`](docs/kreator-gier.md)
 - Propozycja na później (odłożona): przygodówka z grafiką - [`docs/propozycja-przygodowka-graficzna.md`](docs/propozycja-przygodowka-graficzna.md)
 
 ## Struktura
 
 ```
 engine/              silnik (Python 3, bez UI): scenario.py - format, game.py - gra, check.py - sprawdzanie,
-                     voice.py - głos narratora i nazwy nagrań
-tools/nagraj.py      nagrania Piperem (w trakcie budowania obrazu Docker)
+                     voice.py - głos narratora i nazwy nagrań, log.py - logi (rozmowy z AI, rozgrywki)
+tools/nagraj.py      nagrania Piperem (przy budowaniu obrazu Docker; Narrator - z kodu, w działającym kontenerze)
+tools/statystyki.py  podsumowanie rozgrywek z logów dane/rozgrywki/ (ile gier, które zakończenia i kiedy)
 api/                 HTTP API (FastAPI) - cienka warstwa nad silnikiem, bez sesji
+kreator/             kreator gier z AI (osobna usługa ap-gra-kreator, port 8767): ai.py - jedyne wywołanie AI
+                     z logiem, rozmowa.py - pytania, WRÓĆ, podsumowanie; tworzenie.py - gra z pomysłu
+                     (zarys, scenariusz, kontrola, nagrania, publikacja); prompty/ - polecenia dla AI
 scenariusz/          scenariusze (*.md)
 play.py              granie w terminalu - do pisania i testowania fabuły
 tests/               testy silnika i API

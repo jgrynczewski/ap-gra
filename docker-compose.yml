@@ -10,3 +10,25 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8766:8766"
+    volumes:
+      # User games, creator conversations and logs (docs/kreator-gier.md) -
+      # on the disk next to the repo, kept across rebuilds
+      - ./dane:/app/dane
+
+  # The game creator (docs/kreator-gier.md): the only service with the API
+  # key (.env next to this file, never in git) and the one that talks to the AI
+  ap-gra-kreator:
+    image: ap-gra  # the same image, built by the ap-gra service above
+    pull_policy: never
+    depends_on:
+      - ap-gra
+    container_name: ap-gra-kreator
+    restart: unless-stopped
+    command: ["uvicorn", "kreator.app:app", "--host", "0.0.0.0", "--port", "8767"]
+    ports:
+      - "127.0.0.1:8767:8767"
+    env_file:
+      - path: .env
+        required: false  # without it the creator runs, but "ai": false in /v1/kreator/health
+    volumes:
+      - ./dane:/app/dane

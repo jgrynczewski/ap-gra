@@ -1,3 +1,5 @@
 # HTTP API (api/app.py); the engine itself needs nothing
 fastapi==0.115.6
 uvicorn==0.34.0
+# Game creator (kreator/) - Claude API; only the ap-gra-kreator service has the key
+anthropic==2.6.0
