@@ -72,6 +72,8 @@ INTERFACE = {
     "mysle": "Myślę...",
     "wybrales": "Wybrałeś:",  # potwierdzenie wyboru - jak w grze (engine/voice.py)
     "blad": "Coś poszło nie tak. Wróć albo przerwij.",
+    # Tile on the GRY PRZYGODOWE board in AP that opens this conversation
+    "stworz_gre": "Stwórz grę",
     # Making the game (kreator/tworzenie.py)
     "tworze": "Tworzę grę. To potrwa kilkanaście minut. Gotowa gra pojawi się jako nowy kafelek.",
     "w_trakcie": "Ta gra jeszcze się tworzy.",

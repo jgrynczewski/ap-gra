@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -53,9 +54,21 @@ def _narrator():
     return Narrator(MODELS, RECORDINGS) if model_path(MODELS).exists() else None
 
 
+def record_interface(narrator) -> None:
+    """Recordings of the fixed texts (buttons, messages) right after the
+    start - AP reads them in the narrator's voice from the first visit."""
+    for text in INTERFACE.values():
+        try:
+            narrator.recording(text)
+        except Exception as error:  # noqa: BLE001 - AP reads with its own voice then
+            print(f"kreator: nie nagrano {text!r}: {error}", flush=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.workshop.resume()
+    if app.state.narrator is not None:
+        threading.Thread(target=record_interface, args=(app.state.narrator,), daemon=True).start()
     yield
 
 

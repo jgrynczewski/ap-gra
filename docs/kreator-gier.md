@@ -12,7 +12,7 @@
 - **AP nie czeka na AI.** Zleca pracę i wraca do innych zajęć, a gotowa gra pojawia się jako kafelek. `gra_client` ma limit 10 s, po którym mówi „Gra nie jest uruchomiona”.
 - **Rozmowa z AI od pierwszego pytania**, z przyciskiem WRÓĆ. AP pokazuje każde pytanie po otrzymaniu odpowiedzi od AI i nie zacina się w tym czasie.
 - **Na start tylko wybór z opcji**, w tym „INNE PROPOZYCJE” (decyzja 2026-11-07).
-- **Nowa plansza GRY PRZYGODOWE** (decyzja 2026-11-07): w `new_games.py` jeden nowy kafelek zamiast Tajemnicy i Zwrotki, które przechodzą na nową planszę. Plansza jest budowana z listy gier, ma strony i przycisk NOWA GRA.
+- **Nowa plansza GRY PRZYGODOWE** (decyzja 2026-11-07): w `new_games.py` jeden nowy kafelek zamiast Tajemnicy i Zwrotki, które przechodzą na nową planszę. Plansza jest budowana z listy gier, ma strony i przycisk STWÓRZ GRĘ (2026-11-08: zamiast NOWA GRA - nie myli się z „Nową grą” w grze).
 - **Grafika rysowana prostymi kształtami**, na poziomie ogrodu z „Ostatniej zwrotki”; bez modelu graficznego (decyzja 2026-11-07).
 - **Animacja osobna dla każdej gry**, pisana przez AI jako kod rysujący, jak `NightScene`. Kod działa tylko w kontenerze bez sieci, z limitem czasu, i zapisuje klatki do plików. AP tylko je odtwarza, więc błąd w kodzie nie wywróci AP. Sprawdzić płynność i zużycie pamięci na laptopie z AP.
 - **Kafelek: pierwsza klatka animacji.** Gdy animacja się nie uda - gotowy obrazek zamiast przerywania tworzenia gry.
@@ -88,7 +88,7 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 
 **Etap 6 - AP** (kod gotowy 2026-11-08; testy ręczne P1-P13 w `GRA_PLAN.md` w repo AP)
 - [x] `new_games.py`: kafelek GRY PRZYGODOWE (nowa ikona: książka z górami) zamiast Tajemnicy i Zwrotki, obok puste pole
-- [x] Plansza GRY PRZYGODOWE z listy gier (`modules/przygody.py`): siatka 3 x 5 - NOWA GRA, 12 gier na stronę, DALEJ (gdy więcej stron), POWRÓT; lista z serwera przy każdym powrocie na planszę; tytuły czyta narrator (nowe nagrania tytułów w ap-gra)
+- [x] Plansza GRY PRZYGODOWE z listy gier (`modules/przygody.py`): siatka 3 x 5 - STWÓRZ GRĘ, 12 gier na stronę, DALEJ (gdy więcej stron), POWRÓT; lista z serwera przy każdym powrocie na planszę; tytuły czyta narrator (nowe nagrania tytułów w ap-gra)
 - [x] Plansza rozmowy (`modules/kreator.py`): pytanie, opcje, WRÓĆ, PRZERWIJ, „Myślę...”, „Wybrałeś: …”; AP pyta kreator co sekundę. Wspólna część z planszą gry wydzielona w `modules/gra.py` (`NarratedBoard`)
 - [x] Odtwarzanie animacji w planszy gry (`modules/scenka.py` → `FramesScene`): klatki pobierane raz do `~/.ap-gra/gry/<id>/`, w pamięci tylko pliki, bieżąca klatka dekodowana przy zmianie
 - [x] Gra w trakcie tworzenia i nieudana - kafelek z napisem i komunikat głosowy; nieudana widoczna 3 dni
