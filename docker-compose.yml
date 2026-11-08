@@ -33,6 +33,26 @@ services:
     volumes:
       - ./dane:/app/dane
 
+  # Kompan (docs/kompan.md): its own API key (.env.kompan) and its own data -
+  # personal conversations and notes, which no other service sees
+  ap-gra-kompan:
+    image: ap-gra
+    pull_policy: never
+    depends_on:
+      - ap-gra
+    container_name: ap-gra-kompan
+    restart: unless-stopped
+    command: ["uvicorn", "kompan.app:app", "--host", "0.0.0.0", "--port", "8768"]
+    ports:
+      - "127.0.0.1:8768:8768"
+    env_file:
+      - path: .env.kompan
+        required: false  # without it Kompan runs, but "ai": false in /v1/kompan/health
+    environment:
+      AP_KOMPAN_DATA: /app/dane-kompan
+    volumes:
+      - ./dane-kompan:/app/dane-kompan
+
   # Runs the animation code written by the AI (docs/kreator-gier.md, stage 5):
   # no network, no key, read-only system, limits; sees only dane/rysownik/
   # (jobs from the creator, as files)

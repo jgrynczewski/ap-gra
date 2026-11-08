@@ -128,6 +128,28 @@ Stan tworzenia: `{"id", "gra", "tytul", "status", "krok", "krok_nr", "krokow", "
 - Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`; `wybrales` - „Wybrałeś:” jak w grze.
 - Historia tworzenia (każde zapytanie do AI i odpowiedź, odrzucone scenariusze z błędami, kroki) trafia do tego samego logu co rozmowa: `dane/rozmowy/<id>/log.jsonl`; kopia w grze (`rozmowa.jsonl`).
 
+## Kompan (`ap-gra-kompan`, port 8768)
+
+Osobna usługa z tego samego obrazu ([`kompan.md`](kompan.md)), z własnym kluczem API (plik `.env.kompan`, wzór w `.env.kompan.example`) i własnymi danymi (`dane-kompan/`, niewidoczne dla innych usług). Każde zapytanie wraca od razu; AI pracuje w tle, a klient co sekundę pyta o stan.
+
+| Metoda i ścieżka | Wejście | Wyjście |
+|---|---|---|
+| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu |
+| `POST /v1/kompan/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`) |
+| `GET /v1/kompan/rozmowy/<id>` | - | stan rozmowy |
+| `POST /v1/kompan/rozmowy/<id>/odpowiedz` | `{"opcja": 2}` | stan (zwykle `mysli`) |
+| `POST /v1/kompan/rozmowy/<id>/wroc` | - | poprzednie pytanie, bez pytania AI |
+| `POST /v1/kompan/rozmowy/<id>/powrot` | - | WRÓĆ DO ROZMOWY: stan; po błędzie, limicie albo restarcie pyta AI ponownie |
+| `POST /v1/kompan/rozmowy/<id>/wyjscie` | - | ZAKOŃCZ: zapis w logu, rozmowa zostaje bez zmian |
+| `GET /v1/kompan/audio/<nazwa>.wav` | - | nagranie (adres ze stanu) |
+
+Stan: `{"id", "status", "tekst", "audio", "opcje": [...], "stale": [...], "mozna_wrocic", "tytul"}`. `opcje` to odpowiedzi od AI (2-4), `stale` to Blisko, Inne propozycje, Zmień temat; każdy przycisk to `{"numer", "tekst", "audio"}`, z jedną numeracją dla `/odpowiedz`.
+
+- `status`: `mysli`, `pytanie`, `blad` (AI zawiodło), `limit` (przekroczony dzienny limit kosztów).
+- Odpowiedź lub WRÓĆ niepasujące do stanu → 409 `{"error"}`; nieznana rozmowa → 404.
+- Rozmowy są na dysku i przeżywają restart usługi. Historia: `dane-kompan/rozmowy/<id>/log.jsonl` - każde zapytanie do AI, każda odpowiedź, każde pytanie z wszystkimi opcjami, każdy wybór. Koszty: `dane-kompan/koszty.jsonl`.
+- Ustawienia w `.env.kompan`: `AP_KOMPAN_MODEL`, `AP_KOMPAN_EFFORT`, `AP_KOMPAN_LIMIT_USD`. Notatki startowe: zwykły tekst w `dane-kompan/notatki_startowe.txt`.
+
 ## Uruchomienie
 
 - **Kontener (komputer z AP):** `docker compose up -d --build` - startuje razem z systemem. Po zmianie scenariusza lub kodu: `git pull`, potem to samo polecenie.

@@ -157,7 +157,7 @@ class ConversationTest(unittest.TestCase):
         self.assertIn("Pomagasz użytkownikowi", request["zapytanie"]["system"])
         answer = log[2]
         self.assertEqual(json.loads(answer["odpowiedz"]), Q1)
-        self.assertEqual(answer["tokeny"], {"wejscie": 120, "wyjscie": 40, "z_pamieci": 0})
+        self.assertEqual(answer["tokeny"], {"wejscie": 120, "wyjscie": 40, "z_pamieci": 0, "do_pamieci": None})
         self.assertEqual(answer["id_zapytania"], "req_test")
         self.assertEqual(log[4]["tekst"], "Romans")
         self.assertTrue(all("czas" in e for e in log))

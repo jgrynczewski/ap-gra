@@ -6,4 +6,6 @@ __pycache__
 docs
 audio
 dane
+dane-kompan
 .env
+.env.kompan

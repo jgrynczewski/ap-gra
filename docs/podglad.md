@@ -60,6 +60,20 @@ Krótki stan wszystkich tworzonych i stworzonych gier (status, krok):
 curl -s localhost:8767/v1/kreator/gry | python3 -m json.tool
 ```
 
+## Kompan
+
+Działa tak samo, ale w osobnym katalogu `~/ap-gra/dane-kompan/`:
+
+```
+curl -s localhost:8768/v1/kompan/health | python3 -m json.tool       # "ai": true = klucz API jest ustawiony
+KLOG="$(ls -t ~/ap-gra/dane-kompan/rozmowy/*/log.jsonl | head -1)"   # ostatnio zapisywany log
+grep -E '"rodzaj": "(pokazane|odpowiedz_uzytkownika)"' "$KLOG" | cut -c1-500   # pytania, opcje i wybory
+tail -n 5 ~/ap-gra/dane-kompan/koszty.jsonl                          # koszt ostatnich odpowiedzi AI
+docker logs --tail 30 ap-gra-kompan
+```
+
+Pliki w `dane-kompan/` tworzy kontener, więc mogą należeć do roota. Jeśli polecenie nie ma dostępu, dopisz na początku `sudo`.
+
 ## Pliki gry
 
 ```

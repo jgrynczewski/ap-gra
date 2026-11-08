@@ -46,10 +46,11 @@ def configured() -> bool:
 
 
 class AI:
-    def __init__(self, client=None, model: str = MODEL, effort: str = EFFORT):
+    def __init__(self, client=None, model: str = MODEL, effort: str = EFFORT, on_usage=None):
         self._client = client
         self.model = model
         self.effort = effort
+        self.on_usage = on_usage  # on_usage(model, usage) after every answer (kompan/koszty.py)
 
     @property
     def client(self):
@@ -57,7 +58,7 @@ class AI:
             self._client = default_client()
         return self._client
 
-    def ask(self, log: Log, purpose: str, system: str, messages: list[dict], schema: dict,
+    def ask(self, log: Log, purpose: str, system: str | list[dict], messages: list[dict], schema: dict,
             effort: str | None = None, max_tokens: int = MAX_TOKENS) -> dict:
         """Send the conversation, return the answer as a dict matching schema.
 
@@ -94,7 +95,10 @@ class AI:
                   model=response.model, powod_konca=response.stop_reason,
                   id_zapytania=getattr(response, "_request_id", None),
                   tokeny={"wejscie": usage.input_tokens, "wyjscie": usage.output_tokens,
-                          "z_pamieci": getattr(usage, "cache_read_input_tokens", None)})
+                          "z_pamieci": getattr(usage, "cache_read_input_tokens", None),
+                          "do_pamieci": getattr(usage, "cache_creation_input_tokens", None)})
+        if self.on_usage:
+            self.on_usage(response.model, usage)
         if response.stop_reason == "refusal":
             raise AIError("AI odmówiło odpowiedzi")
         if response.stop_reason == "max_tokens":

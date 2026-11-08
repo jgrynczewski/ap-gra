@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY engine engine
 COPY api api
 COPY kreator kreator
+COPY kompan kompan
 COPY rysownik rysownik
 COPY scenariusz scenariusz
 
