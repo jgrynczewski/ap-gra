@@ -181,6 +181,36 @@ class PlaysTest(unittest.TestCase):
         self.assertIn(view["state"]["rozgrywka"], {e["rozgrywka"] for e in entries})
 
 
+@unittest.skipIf(TestClient is None, "brak fastapi / httpx (requirements-dev.txt)")
+class PicturesTest(unittest.TestCase):
+    """Tile and animation frames of a user game (made by the creator)."""
+
+    def test_tile_and_frames(self):
+        import json
+
+        directory = add_user_game("wieza_obraz")
+        (directory / "animacja").mkdir()
+        for name in ("0000.png", "0001.png"):
+            (directory / "animacja" / name).write_bytes(b"\x89PNG klatka")
+        (directory / "kafelek.png").write_bytes(b"\x89PNG kafelek")
+        (directory / "gra.json").write_text(json.dumps({"animacja": {
+            "fps": 12, "klatki": 2, "szerokosc": 540, "wysokosc": 500, "zapasowa": False}}), encoding="utf-8")
+        add_user_game("wieza_bez_obrazu")
+        client = TestClient(app)
+        games = {g["id"]: g for g in client.get("/v1/games").json()["games"]}
+        self.assertEqual(games["wieza_obraz"]["kafelek"], "/v1/gry/wieza_obraz/kafelek.png")
+        self.assertEqual(games["wieza_obraz"]["animacja"], {"fps": 12, "klatki": 2, "szerokosc": 540,
+                                                            "wysokosc": 500, "adres": "/v1/gry/wieza_obraz/animacja/"})
+        self.assertEqual((games["wieza_bez_obrazu"]["kafelek"], games["wieza_bez_obrazu"]["animacja"]), (None, None))
+        self.assertEqual((games["sala_pod_zegarem"]["kafelek"], games["sala_pod_zegarem"]["animacja"]), (None, None))
+        self.assertEqual(client.get("/v1/gry/wieza_obraz/kafelek.png").content, b"\x89PNG kafelek")
+        response = client.get("/v1/gry/wieza_obraz/animacja/0001.png")
+        self.assertEqual((response.status_code, response.headers["content-type"]), (200, "image/png"))
+        for bad in ("/v1/gry/wieza_obraz/animacja/0002.png", "/v1/gry/wieza_obraz/animacja/..%2Fgra.json",
+                    "/v1/gry/wieza_obraz/animacja/x.png", "/v1/gry/wieza_bez_obrazu/kafelek.png"):
+            self.assertEqual(client.get(bad).status_code, 404, bad)
+
+
 def add_user_game(game_id: str, text: str = USER_GAME) -> Path:
     directory = DATA / "gry" / game_id
     (directory / "audio").mkdir(parents=True)

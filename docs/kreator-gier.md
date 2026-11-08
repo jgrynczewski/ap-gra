@@ -68,7 +68,7 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - [x] Nagrania gry, publikacja przez `.tmp` i przemianowanie
 - [x] Stan tworzenia do odczytu przez AP (w toku / gotowa / nieudana) - `GET /v1/kreator/gry`, opis w `docs/api.md`
 - [x] Testy z udawanym AI (73 OK)
-- Kroki: zarys → scenariusz → kontrola → nagrania → publikacja (animacja i kafelek dojdą w etapie 5, przed publikacją). Wyniki w `dane/zadania/<id>/` (ten sam identyfikator co rozmowa), gra w `dane/gry/g<id>/` (`scenariusz.md`, `gra.json`, `audio/`, `rozmowa.jsonl` - kopia logu)
+- Kroki: zarys → scenariusz → kontrola → animacja (etap 5) → nagrania → publikacja. Wyniki w `dane/zadania/<id>/` (ten sam identyfikator co rozmowa), gra w `dane/gry/g<id>/` (`scenariusz.md`, `gra.json`, `audio/`, `rozmowa.jsonl` - kopia logu)
 - Wymagania dla scenariusza z AI (jak nasze gry): 18-32 sceny, 3-9 zakończeń, najkrótsza rozgrywka co najmniej 5 wyborów, opcja do 60 znaków, tytuł z pomysłu, plus wszystkie błędy `check.py`
 - Kontrola fabuły: AI czyta scenariusz i zgłasza najwyżej 5 poważnych problemów; scenariusz wraca raz do poprawki. Gdy poprawka się nie uda albo kontrola zawiedzie - zostaje scenariusz sprawdzony programem (gra i tak powstaje)
 - Nieudane nagrania nie przerywają tworzenia: AP przeczyta grę swoim głosem
@@ -77,9 +77,14 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - Do sprawdzenia w etapie 7: ile trwa stworzenie gry i ile kosztuje (zużycie tokenów jest w logu)
 
 **Etap 5 - animacja (`ap-gra-rysownik`)**
-- [ ] Kontener bez sieci, z limitem pamięci, CPU i czasu
-- [ ] AI pisze kod rysujący; klatki do plików, sprawdzenie, że nie są puste; pierwsza klatka jako kafelek; gotowy obrazek zapasowy
-- [ ] Trasy API do klatek i kafelka
+- [x] Kontener bez sieci, z limitem pamięci, CPU i czasu (2026-11-08): system plików tylko do odczytu, bez uprawnień (`cap_drop: ALL`), widzi tylko `dane/rysownik/`; każdy kod w osobnym procesie z limitem pamięci (512 MB), czasu (2 min) i rozmiaru plików. Sprawdzone w kontenerze z tymi ustawieniami: brak sieci, zapis do systemu zablokowany, 96 klatek w ok. 7 s na jednym rdzeniu (ok. 0,8 MB)
+- [x] AI pisze kod rysujący (`rysuj(d, t, w, h)`, Pillow, tylko `math` i `random`); kod sprawdzany przed uruchomieniem (importy, pliki, `__`); klatki sprawdzane: są wszystkie, nie są puste, coś się rusza; błąd wraca do AI, najwyżej 3 próby; pierwsza klatka jako kafelek; gotowy obrazek zapasowy (droga wśród wzgórz o zachodzie, `rysownik/zapasowy.py`), także gdy rysownik nie działa
+- [x] Trasy API do klatek i kafelka (`ap-gra`): `/v1/games` → `kafelek`, `animacja`; `/v1/gry/<id>/kafelek.png`, `/v1/gry/<id>/animacja/0000.png`
+- [x] Testy (84 OK), w tym prawdziwe rysowanie w osobnym procesie, pętla bez końca i za dużo pamięci
+- Animacja: 540 x 500 pikseli (proporcje panelu scenki w AP), pętla 8 s, 12 klatek na sekundę (96 klatek PNG); rysowana w dwukrotnym rozmiarze i zmniejszana (gładkie krawędzie). Krok `animacja` między kontrolą a nagraniami; w paczce gry: `animacja/`, `kafelek.png`, `rysunek.py` (kod od AI, do wglądu)
+- Kreator i rysownik rozmawiają przez pliki (`dane/rysownik/<id>/kod.py`, `zlecenie.json` → `klatki/`, `wynik.json`), bo kontener bez sieci nie ma portu
+- Prompt: `kreator/prompty/animacja.md` - bez konkretnego przykładu scenki (żeby nie zawężać pomysłów)
+- Do sprawdzenia w etapie 6/7: płynność odtwarzania i pamięć AP na laptopie
 
 **Etap 6 - AP**
 - [ ] `new_games.py`: kafelek GRY PRZYGODOWE zamiast Tajemnicy i Zwrotki

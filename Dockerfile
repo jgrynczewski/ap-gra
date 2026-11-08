@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY engine engine
 COPY api api
 COPY kreator kreator
+COPY rysownik rysownik
 COPY scenariusz scenariusz
 
 FROM base AS audio

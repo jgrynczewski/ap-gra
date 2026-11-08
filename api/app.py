@@ -19,6 +19,7 @@ ending, with the time. The id of the playthrough travels in the state
 before) gets a new one. A failure to write the log never stops the game.
 """
 
+import json
 import logging
 import os
 import re
@@ -54,6 +55,7 @@ PLAYS = DATA / "rozgrywki"  # logs of the playthroughs, one file per game
 # published, <id>.tmp) is not a game
 GAME_ID = re.compile(r"[a-z0-9_]+")
 RECORDING = re.compile(r"[0-9a-f]+\.wav")
+FRAME = re.compile(r"[0-9]{4}\.png")
 
 recordings = Recordings(AUDIO, AUDIO_URL)
 GAMES = {path.stem: Game(load(path), audio=recordings) for path in sorted(SCENARIOS.glob("*.md"))}
@@ -159,21 +161,56 @@ def unknown_game(request: Request, error: UnknownGame) -> JSONResponse:
     return JSONResponse({"error": str(error)}, status_code=404)
 
 
+def _pictures(gid: str) -> dict:
+    """Tile and animation of a user game (built-in games: drawn by AP itself)."""
+    directory = USER_GAMES / gid
+    tile = directory / "kafelek.png"
+    animation = None
+    try:
+        info = json.loads((directory / "gra.json").read_text(encoding="utf-8")).get("animacja")
+        if info and info.get("klatki"):
+            animation = {"fps": info["fps"], "klatki": info["klatki"], "szerokosc": info["szerokosc"],
+                         "wysokosc": info["wysokosc"], "adres": f"/v1/gry/{gid}/animacja/"}
+    except (OSError, ValueError, KeyError, AttributeError):
+        pass
+    return {"kafelek": f"/v1/gry/{gid}/kafelek.png" if tile.is_file() else None, "animacja": animation}
+
+
 @app.get("/v1/games")
 def games() -> dict:
     return {"default": DEFAULT_GAME,
             "games": [{"id": gid, "title": g.scenario.title, "endings": len(g.scenario.endings),
-                       "builtin": gid in GAMES}
+                       "builtin": gid in GAMES,
+                       **({"kafelek": None, "animacja": None} if gid in GAMES else _pictures(gid))}
                       for gid, g in all_games().items()]}
+
+
+def _user_file(game: str, *parts: str) -> Path:
+    # Names checked by the callers before touching the disk - no paths outside dane/gry
+    path = USER_GAMES.joinpath(game, *parts)
+    if not (GAME_ID.fullmatch(game) and path.is_file()):
+        raise UnknownGame(f"Nie ma pliku {'/'.join(parts)!r} gry {game!r}.")
+    return path
 
 
 @app.get("/v1/gry/{game}/audio/{name}")
 def user_game_audio(game: str, name: str) -> FileResponse:
-    # Names checked before touching the disk - no paths outside dane/gry
-    path = USER_GAMES / game / "audio" / name
-    if not (GAME_ID.fullmatch(game) and RECORDING.fullmatch(name) and path.is_file()):
+    if not RECORDING.fullmatch(name):
         raise UnknownGame(f"Nie ma nagrania {name!r}.")
-    return FileResponse(path, media_type="audio/wav")
+    return FileResponse(_user_file(game, "audio", name), media_type="audio/wav")
+
+
+@app.get("/v1/gry/{game}/kafelek.png")
+def user_game_tile(game: str) -> FileResponse:
+    return FileResponse(_user_file(game, "kafelek.png"), media_type="image/png")
+
+
+@app.get("/v1/gry/{game}/animacja/{name}")
+def user_game_frame(game: str, name: str) -> FileResponse:
+    """A frame of the animation: 0000.png ... (count and speed in /v1/games)."""
+    if not FRAME.fullmatch(name):
+        raise UnknownGame(f"Nie ma klatki {name!r}.")
+    return FileResponse(_user_file(game, "animacja", name), media_type="image/png")
 
 
 @app.get("/v1/health")

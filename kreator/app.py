@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from .ai import AI, configured
 from .rozmowa import INTERFACE, ZATWIERDZONA, Conversation, ConversationError, audio_of, new_id
+from .rysowanie import Painter
 from .tworzenie import Workshop
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,7 +63,8 @@ app = FastAPI(title="ap-gra-kreator", lifespan=lifespan)
 app.state.ai = AI()
 app.state.narrator = _narrator()
 app.state.run = None  # tests: run the AI work synchronously
-app.state.workshop = Workshop(DATA, app.state.ai, app.state.narrator)
+# The drawing service (ap-gra-rysownik, no network) sees only dane/rysownik/
+app.state.workshop = Workshop(DATA, app.state.ai, app.state.narrator, painter=Painter(DATA / "rysownik"))
 conversations: dict[str, Conversation] = {}
 
 

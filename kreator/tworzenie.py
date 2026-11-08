@@ -1,4 +1,4 @@
-"""Making a game from an approved idea (docs/kreator-gier.md, stage 4).
+"""Making a game from an approved idea (docs/kreator-gier.md, stages 4-5).
 
 A fixed line of steps, each saving its result to dane/zadania/<id>/:
 
@@ -9,6 +9,10 @@ A fixed line of steps, each saving its result to dane/zadania/<id>/:
     kontrola    the AI reads the story; serious problems
                 go back to the writer once; a failed fix
                 keeps the checked scenario                -> kontrola.json, gotowy.md
+    animacja    the AI writes drawing code, the drawing
+                service (no network) makes the frames;
+                errors go back, up to 3 answers; a failure
+                gives our still picture                   -> animacja/, animacja.json
     nagrania    the narrator records every text           -> audio/, nagrania.json
     publikacja  gry/<game>.tmp, then one rename           -> gry/<game>/
 
@@ -32,12 +36,15 @@ from engine import voice
 from engine.check import check
 from engine.scenario import Scenario, ScenarioError, parse
 
-from .ai import AI, AIError, GAME_EFFORT, GAME_MAX_TOKENS
 from engine.log import Log
+from rysownik import klatki, zapasowy
+
+from .ai import AI, AIError, GAME_EFFORT, GAME_MAX_TOKENS
+from .rysowanie import Painter
 
 PROMPTS = Path(__file__).parent / "prompty"
 
-STEPS = ("zarys", "scenariusz", "kontrola", "nagrania", "publikacja")
+STEPS = ("zarys", "scenariusz", "kontrola", "animacja", "nagrania", "publikacja")
 
 # Statuses
 W_TOKU = "w_toku"
@@ -69,6 +76,12 @@ REVIEW_SCHEMA = {
     "type": "object",
     "properties": {"ok": {"type": "boolean"}, "uwagi": {"type": "array", "items": {"type": "string"}}},
     "required": ["ok", "uwagi"],
+    "additionalProperties": False,
+}
+ANIMATION_SCHEMA = {
+    "type": "object",
+    "properties": {"kod": {"type": "string"}},
+    "required": ["kod"],
     "additionalProperties": False,
 }
 
@@ -139,7 +152,7 @@ def _read_json(path: Path):
 class Task:
     """One game being made: dane/zadania/<id>/ (id = id of the conversation)."""
 
-    def __init__(self, directory: Path, data: Path, ai: AI, narrator=None):
+    def __init__(self, directory: Path, data: Path, ai: AI, narrator=None, painter: Painter | None = None):
         self.id = directory.name
         self.directory = directory
         self.games = data / "gry"
@@ -147,6 +160,7 @@ class Task:
         self.log = Log(data / "rozmowy" / self.id / "log.jsonl")
         self.ai = ai
         self.narrator = narrator
+        self.painter = painter  # None - no drawing service: our still picture
 
     # --- state ------------------------------------------------------------
 
@@ -169,7 +183,7 @@ class Task:
 
     def done(self, step: str) -> bool:
         files = {"zarys": "zarys.json", "scenariusz": "scenariusz.md", "kontrola": "gotowy.md",
-                 "nagrania": "nagrania.json"}
+                 "animacja": "animacja.json", "nagrania": "nagrania.json"}
         if step == "publikacja":
             return (self.games / self.game).is_dir()
         return (self.directory / files[step]).exists()
@@ -256,6 +270,46 @@ class Task:
                            powod="zostaje scenariusz sprawdzony programem")
         _write_text(self.directory / "gotowy.md", final)
 
+    def _animacja(self) -> None:
+        """The scene next to the text in AP (its first frame - the tile). A
+        failure gives our still picture - the game is still made."""
+        out = self.directory / "animacja"
+        error = None
+        if self.painter is None:
+            error = "brak rysownika"
+        else:
+            try:
+                code = self._draw_code()
+                shutil.rmtree(out, ignore_errors=True)
+                shutil.copytree(self.painter.frames(self.id), out)
+                _write_text(self.directory / "rysunek.py", code)
+            except (AIError, CreationError, OSError) as failure:
+                error = f"{type(failure).__name__}: {failure}"
+        if error:
+            self.log.write("animacja_zapasowa", blad=error)
+            klatki.render(zapasowy.rysuj, out, frames=1)
+        frames = len(list(out.glob("*.png")))
+        _write_json(self.directory / "animacja.json", {
+            "fps": klatki.FPS, "klatki": frames, "szerokosc": klatki.WIDTH, "wysokosc": klatki.HEIGHT,
+            "zapasowa": bool(error)})
+
+    def _draw_code(self) -> str:
+        """The AI writes drawing code until the drawing service accepts the
+        frames (ATTEMPTS answers)."""
+        messages = [{"role": "user", "content": self._brief()}]
+        for attempt in range(1, ATTEMPTS + 1):
+            code = self._ask("animacja", messages, ANIMATION_SCHEMA)["kod"]
+            result = self.painter.paint(self.id, attempt, code)
+            if result["ok"]:
+                return code
+            self.log.write("animacja_odrzucona", proba=attempt, problemy=result["problemy"])
+            if result.get("brak_rysownika"):
+                raise CreationError(result["problemy"][0])
+            messages = messages + [
+                {"role": "assistant", "content": json.dumps({"kod": code}, ensure_ascii=False)},
+                {"role": "user", "content": _correction("Popraw:", result["problemy"])}]
+        raise CreationError(f"animacja z błędami po {ATTEMPTS} próbach")
+
     def _nagrania(self) -> None:
         """Recordings of the whole game. Without them the game still works
         (AP reads with its own voice), so a failure only goes to the log."""
@@ -285,9 +339,14 @@ class Task:
         shutil.copy2(self.directory / "gotowy.md", temporary / "scenariusz.md")
         if (self.directory / "audio").is_dir():
             shutil.copytree(self.directory / "audio", temporary / "audio")
+        animation = _read_json(self.directory / "animacja.json")
+        shutil.copytree(self.directory / "animacja", temporary / "animacja")
+        shutil.copy2(self.directory / "animacja" / klatki.frame_name(0), temporary / "kafelek.png")
+        if (self.directory / "rysunek.py").exists():  # the code of the animation, for the record
+            shutil.copy2(self.directory / "rysunek.py", temporary / "rysunek.py")
         _write_json(temporary / "gra.json", {
             "id": self.game, "tytul": idea["tytul"], "streszczenie": idea["streszczenie"],
-            "rozmowa": self.id, "model": self.ai.model,
+            "rozmowa": self.id, "model": self.ai.model, "animacja": animation,
             "utworzona": datetime.now().isoformat(timespec="seconds")})
         self.log.write("publikacja", gra=self.game)
         shutil.copy2(self.log.path, temporary / "rozmowa.jsonl")
@@ -302,18 +361,19 @@ class Workshop:
     """The queue of games being made (dane/zadania/), one at a time."""
 
     def __init__(self, data: Path, ai: AI, narrator=None,
-                 run: Callable[[Callable[[], None]], None] = _thread):
+                 run: Callable[[Callable[[], None]], None] = _thread, painter: Painter | None = None):
         self.data = data
         self.tasks_dir = data / "zadania"
         self.ai = ai
         self.narrator = narrator
+        self.painter = painter
         self._run = run
         self._lock = threading.Lock()
         self._queue: list[Task] = []
         self._busy = False
 
     def _task(self, task_id: str) -> Task:
-        return Task(self.tasks_dir / task_id, self.data, self.ai, self.narrator)
+        return Task(self.tasks_dir / task_id, self.data, self.ai, self.narrator, self.painter)
 
     def add(self, task_id: str, idea: dict) -> Task:
         """A new game from an approved conversation (again for the same

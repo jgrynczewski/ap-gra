@@ -32,3 +32,30 @@ services:
         required: false  # without it the creator runs, but "ai": false in /v1/kreator/health
     volumes:
       - ./dane:/app/dane
+
+  # Runs the animation code written by the AI (docs/kreator-gier.md, stage 5):
+  # no network, no key, read-only system, limits; sees only dane/rysownik/
+  # (jobs from the creator, as files)
+  ap-gra-rysownik:
+    image: ap-gra
+    pull_policy: never
+    depends_on:
+      - ap-gra
+    container_name: ap-gra-rysownik
+    restart: unless-stopped
+    command: ["python", "-m", "rysownik.serwis", "/praca"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 64
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./dane/rysownik:/praca

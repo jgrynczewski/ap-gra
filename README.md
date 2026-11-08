@@ -24,7 +24,9 @@ tools/statystyki.py  podsumowanie rozgrywek z logów dane/rozgrywki/ (ile gier, 
 api/                 HTTP API (FastAPI) - cienka warstwa nad silnikiem, bez sesji
 kreator/             kreator gier z AI (osobna usługa ap-gra-kreator, port 8767): ai.py - jedyne wywołanie AI
                      z logiem, rozmowa.py - pytania, WRÓĆ, podsumowanie; tworzenie.py - gra z pomysłu
-                     (zarys, scenariusz, kontrola, nagrania, publikacja); prompty/ - polecenia dla AI
+                     (zarys, scenariusz, kontrola, animacja, nagrania, publikacja); prompty/ - polecenia dla AI
+rysownik/            animacje gier z kreatora: usługa ap-gra-rysownik (bez sieci) uruchamia kod rysujący od AI
+                     i robi klatki; zapasowy.py - nasz obrazek, gdy animacja się nie uda
 scenariusz/          scenariusze (*.md)
 play.py              granie w terminalu - do pisania i testowania fabuły
 tests/               testy silnika i API

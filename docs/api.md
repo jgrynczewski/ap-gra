@@ -10,13 +10,17 @@ Cienka warstwa nad silnikiem (`api/app.py` → `engine.Game`). Na komputerze z A
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/games` | - | `{"default", "games": [{"id", "title", "endings", "builtin"}]}` - lista gier; `builtin` - gra wbudowana (`false` - gra użytkownika) |
+| `GET /v1/games` | - | `{"default", "games": [{"id", "title", "endings", "builtin", "kafelek", "animacja"}]}` - lista gier; `builtin` - gra wbudowana (`false` - gra użytkownika); `kafelek`, `animacja` - niżej |
 | `GET /v1/health?game=` | - | `{"ok": true, "game", "title", "endings", "recordings", "interface"}` - czy serwer działa, tytuł gry, liczba zakończeń, liczba nagrań, przyciski planszy |
 | `POST /v1/start` | - | widok pierwszej sceny |
 | `POST /v1/choose` | `{"state": {...}, "option": 2}` | widok następnej sceny |
 | `POST /v1/view` | `{"state": {...}}` | widok sceny z zapisu (kontynuacja gry); zapis niepasujący do scenariusza → 400 |
 | `GET /v1/audio/<nazwa>.wav` | - | nagranie gry wbudowanej (adres z widoku) |
 | `GET /v1/gry/<id>/audio/<nazwa>.wav` | - | nagranie gry użytkownika (adres z widoku) |
+| `GET /v1/gry/<id>/kafelek.png` | - | obrazek na przycisk gry użytkownika |
+| `GET /v1/gry/<id>/animacja/<nnnn>.png` | - | klatka animacji gry użytkownika (`0000.png`, `0001.png`, ...) |
+
+**Kafelek i animacja** (gry użytkownika; wbudowane - `null`, AP rysuje je sam): `kafelek` - adres obrazka albo `null`; `animacja` - `{"fps", "klatki", "szerokosc", "wysokosc", "adres"}` albo `null`. Klatki: `adres` + `0000.png` ... (`klatki` - 1), w pętli, `fps` klatek na sekundę; jedna klatka = nieruchomy obrazek (animacja się nie udała). Kafelek = pierwsza klatka. Klient skaluje klatki do swojego panelu (proporcje ok. 1,08 : 1).
 
 Błąd (nieznana scena, opcja spoza listy, gra skończona) → HTTP 400 `{"error": "..."}`; zły kształt zapytania → 422.
 
@@ -116,11 +120,11 @@ Stan: `{"id", "status", "tekst", "audio", "opcje": [{"numer", "tekst", "audio"}]
 
 ### Tworzenie gry
 
-„Rozpocznij” zleca stworzenie gry. Gry powstają w tle po kolei, jedna naraz: zarys → scenariusz (sprawdzany jak nasze gry, błędy wracają do AI) → kontrola fabuły → nagrania → publikacja. Wyniki kroków są w `dane/zadania/<id>/`, więc po wyłączeniu komputera praca rusza od kroku, na którym stanęła. Gotowa gra pojawia się w `dane/gry/g<id>/` i od razu na liście `GET /v1/games` (`builtin: false`).
+„Rozpocznij” zleca stworzenie gry. Gry powstają w tle po kolei, jedna naraz: zarys → scenariusz (sprawdzany jak nasze gry, błędy wracają do AI) → kontrola fabuły → animacja (kod od AI uruchamia `ap-gra-rysownik` - bez sieci, z limitami; gdy się nie uda - nasz nieruchomy obrazek) → nagrania → publikacja. Wyniki kroków są w `dane/zadania/<id>/`, więc po wyłączeniu komputera praca rusza od kroku, na którym stanęła. Gotowa gra pojawia się w `dane/gry/g<id>/` i od razu na liście `GET /v1/games` (`builtin: false`).
 
 Stan tworzenia: `{"id", "gra", "tytul", "status", "krok", "krok_nr", "krokow", "utworzona"}`.
 
-- `status`: `w_toku`, `gotowa`, `nieudana`; `gra` - identyfikator gry w `/v1/games` (`g` + identyfikator rozmowy, `-` zamienione na `_`); `krok` - bieżący krok (`zarys`, `scenariusz`, `kontrola`, `nagrania`, `publikacja`), przy `nieudana` - krok, na którym się nie udało.
+- `status`: `w_toku`, `gotowa`, `nieudana`; `gra` - identyfikator gry w `/v1/games` (`g` + identyfikator rozmowy, `-` zamienione na `_`); `krok` - bieżący krok (`zarys`, `scenariusz`, `kontrola`, `animacja`, `nagrania`, `publikacja`), przy `nieudana` - krok, na którym się nie udało.
 - Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`.
 - Historia tworzenia (każde zapytanie do AI i odpowiedź, odrzucone scenariusze z błędami, kroki) trafia do tego samego logu co rozmowa: `dane/rozmowy/<id>/log.jsonl`; kopia w grze (`rozmowa.jsonl`).
 
