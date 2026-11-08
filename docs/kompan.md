@@ -1,6 +1,6 @@
 # Kompan: rozmowa z AI w AP
 
-**Status:** projekt zatwierdzony 2026-11-08, etap 1 gotowy (bez prawdziwego AI), następny krok: etap 2. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
+**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1 i 2 gotowy (bez prawdziwego AI), następny krok: pierwszy test ręczny na komputerze z AP. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
 
@@ -113,9 +113,9 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Koszt z tokenów i dzienny limit
 - Do sprawdzenia w etapie 2: pierwsze prawdziwe zapytanie (format z pamięcią podręczną sprawdzony tylko na udawanym AI) i prawdziwy koszt
 
-**Etap 2 - AP**
-- [ ] `kompan_client.py`, `modules/kompan.py`: ekran wejścia i plansza rozmowy
-- [ ] Kafelek KOMPAN na planszy NOWE (zamiast pustego pola), ikona
+**Etap 2 - AP** (kod gotowy 2026-11-08; logika planszy na atrapie `wx`, klient z Pythona 2.7 przeciw prawdziwemu serwerowi z udawanym AI)
+- [x] `kompan_client.py`, `modules/kompan.py`: ekran wejścia i plansza rozmowy
+- [x] Kafelek KOMPAN na planszy NOWE (zamiast pustego pola), ikona
 - [ ] Sprawdzić, czy 4 odpowiedzi i 5 przycisków na dole mieszczą się na ekranie i czy skanowanie nie jest za długie
 - [ ] **Pierwszy test ręczny: czy to się dobrze rozmawia.** Główna niewiadoma, więc zanim zbudujemy resztę
 
@@ -156,3 +156,4 @@ Czy rozmowa będzie dobra na tyle, żeby użytkownik chciał do niej wracać. Dl
 - [ ] Osobny moduł bezpieczeństwa (wzywanie pomocy) - możliwy, ale poza kompetencjami Kompana
 - [ ] Jeśli Kompan wyjdzie poza użytek wewnętrzny: mówić użytkownikom, że rozmowy są zapisywane, kto może je czytać i że przechodzą przez dostawcę AI; sprawdzić stronę prawną (dane o zdrowiu, RODO)
 - [ ] Przeniesienie kafelka do menu głównego, jeśli Kompan będzie często używany
+- [ ] Sprzątanie starych nagrań: każde pytanie to szacunkowo ok. 1 MB w `dane-kompan/nagrania/` i drugie tyle w `~/.ap-gra/nagrania/`, a nic ich nie usuwa. Zmierzyć po pierwszych tygodniach (`du -sh`) i wtedy ustalić, co kasować
