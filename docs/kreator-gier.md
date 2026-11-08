@@ -113,6 +113,10 @@ Polecenia i linki: [`podglad.md`](podglad.md).
 
 ## TODO
 
+- [ ] Testy P12 (przerwanie rozmowy) i P13 (ponad 12 gier, strony) - `GRA_PLAN.md` w repo AP
+- [ ] Potwierdzić, że limit wydatków na koncie API jest ustawiony (`podglad.md`)
+- [ ] Dodać do repo AP nagranie `sounds/gry_przygodowe.ogg` z komputera z AP
+- [ ] Niedoróbki w scenariuszach z AI (pierwsza próba: „może być”) - wrócić z konkretnymi przykładami
 - [ ] Wpisywanie własnego tekstu podczas tworzenia gry (PISAK) - po pierwszej wersji; pisanie skanowaniem jest powolne, dlatego nie na start
 - [ ] Poprawki po zagraniu: przycisk POPRAW, nowa wersja gry (zapis stanu przestaje do niej pasować), limit np. 3 na grę - po pierwszej wersji. To pierwsza interakcja użytkownika AP z AI, więc na start jak najmniej naraz (decyzja 2026-11-07)
 - [ ] Usuwanie gier użytkownika - na razie ręcznie z `dane/gry/`

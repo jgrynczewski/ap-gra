@@ -12,6 +12,7 @@ Repo AP: `GRA_PLAN.md` (instalacja serwera, testy).
 - Format scenariusza: [`docs/format.md`](docs/format.md)
 - HTTP API: [`docs/api.md`](docs/api.md)
 - Tworzenie gier przez użytkownika AP z pomocą AI: [`docs/kreator-gier.md`](docs/kreator-gier.md)
+- Kompan, rozmowa z AI w AP (projekt): [`docs/kompan.md`](docs/kompan.md)
 - Jak podejrzeć, co się dzieje (logi, tworzenie gry, rozgrywki, koszty): [`docs/podglad.md`](docs/podglad.md)
 - Propozycja na później (odłożona): przygodówka z grafiką - [`docs/propozycja-przygodowka-graficzna.md`](docs/propozycja-przygodowka-graficzna.md)
 
