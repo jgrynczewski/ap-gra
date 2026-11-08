@@ -1,6 +1,6 @@
 # Tworzenie gier przez użytkownika AP
 
-**Status:** projekt zatwierdzony 2026-11-07, budowa w toku (plan niżej). Użytkownik AP odpowiada na pytania na planszy ze skanowaniem, a gotowa gra pojawia się jako nowy kafelek, bez udziału programisty.
+**Status:** projekt zatwierdzony 2026-11-07, działa na komputerze z AP od 2026-11-08; zostały testy P12 i P13 (`GRA_PLAN.md` w repo AP). Użytkownik AP odpowiada na pytania na planszy ze skanowaniem, a gotowa gra pojawia się jako nowy kafelek, bez udziału programisty.
 
 ## Ustalenia
 
@@ -60,7 +60,7 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - [x] Testy z udawanym AI (58 OK)
 - Model `claude-opus-5-5`, wysiłek `medium` (zmiana w `.env`). Przy odmowie z powodów bezpieczeństwa API samo ponawia na innym modelu (`fallbacks: "default"`)
 - Prompt rozmowy: `kreator/prompty/rozmowa.md`
-- Do sprawdzenia w etapie 7: pierwsze prawdziwe zapytanie do AI (format zapytania sprawdzony tylko na udawanym AI); `docker compose` na komputerze z AP w wersji co najmniej 2.24 (opcjonalny `.env`)
+- Sprawdzone w etapie 7 (2026-11-08): prawdziwe zapytania do AI działają; `docker compose` na komputerze z AP ma wersję 2.35, więc opcjonalny `.env` działa
 
 **Etap 4 - tworzenie gry**
 - [x] Kolejka kroków z zapisem wyników i wznowieniem po restarcie (`kreator/tworzenie.py`, 2026-11-08): ROZPOCZNIJ zleca grę; gry powstają po kolei, jedna naraz
@@ -74,7 +74,7 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - Nieudane nagrania nie przerywają tworzenia: AP przeczyta grę swoim głosem
 - Pisanie gry: wysiłek AI `high` (`AP_GRA_EFFORT_GRA` w `.env`), odpowiedzi do 64 000 tokenów, odbierane w kawałkach (streaming), bo scenariusz to długi tekst
 - Prompty: `kreator/prompty/zarys.md`, `scenariusz.md`, `kontrola.md`
-- Do sprawdzenia w etapie 7: ile trwa stworzenie gry i ile kosztuje (zużycie tokenów jest w logu)
+- Czas i koszt (pomiar w etapie 7, 2026-11-08): stworzenie jednej gry 14 minut i 1,60 $; dwie gry razem z rozmowami o nich 3,12 $
 
 **Etap 5 - animacja (`ap-gra-rysownik`)**
 - [x] Kontener bez sieci, z limitem pamięci, CPU i czasu (2026-11-08): system plików tylko do odczytu, bez uprawnień (`cap_drop: ALL`), widzi tylko `dane/rysownik/`; każdy kod w osobnym procesie z limitem pamięci (512 MB), czasu (2 min) i rozmiaru plików. Sprawdzone w kontenerze z tymi ustawieniami: brak sieci, zapis do systemu zablokowany, 96 klatek w ok. 7 s na jednym rdzeniu (ok. 0,8 MB)
@@ -84,9 +84,9 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - Animacja: 540 x 500 pikseli (proporcje panelu scenki w AP), pętla 8 s, 12 klatek na sekundę (96 klatek PNG); rysowana w dwukrotnym rozmiarze i zmniejszana (gładkie krawędzie). Krok `animacja` między kontrolą a nagraniami; w paczce gry: `animacja/`, `kafelek.png`, `rysunek.py` (kod od AI, do wglądu)
 - Kreator i rysownik rozmawiają przez pliki (`dane/rysownik/<id>/kod.py`, `zlecenie.json` → `klatki/`, `wynik.json`), bo kontener bez sieci nie ma portu
 - Prompt: `kreator/prompty/animacja.md` - bez konkretnego przykładu scenki (żeby nie zawężać pomysłów)
-- Do sprawdzenia w etapie 6/7: płynność odtwarzania i pamięć AP na laptopie
+- Sprawdzone w etapie 7 (2026-11-08, laptop z AP): animacja płynna, AP 28,5% procesora (limit 30%, mały zapas), pamięć ok. 225 MB, bez wzrostu po 5 minutach
 
-**Etap 6 - AP** (kod gotowy 2026-11-08; testy ręczne P1-P13 w `GRA_PLAN.md` w repo AP)
+**Etap 6 - AP** (kod gotowy 2026-11-08; testy ręczne P1-P13 w `GRA_PLAN.md` w repo AP: P1-P11 zaliczone)
 - [x] `new_games.py`: kafelek GRY PRZYGODOWE (nowa ikona: książka z górami) zamiast Tajemnicy i Zwrotki, obok puste pole
 - [x] Plansza GRY PRZYGODOWE z listy gier (`modules/przygody.py`): siatka 3 x 5 - STWÓRZ GRĘ, 12 gier na stronę, DALEJ (gdy więcej stron), POWRÓT; lista z serwera przy każdym powrocie na planszę, a gdy jakaś gra się tworzy - także co 30 s (kafelek zmienia się sam, skanowanie się nie przerywa); tytuły czyta narrator (nowe nagrania tytułów w ap-gra)
 - [x] Plansza rozmowy (`modules/kreator.py`): pytanie, opcje, WRÓĆ, PRZERWIJ, „Myślę...”, „Wybrałeś: …”; AP pyta kreator co sekundę. Wspólna część z planszą gry wydzielona w `modules/gra.py` (`NarratedBoard`)
@@ -95,13 +95,21 @@ Testy automatyczne w kontenerze (`docker build --target test .`) po każdym etap
 - Sprawdzone tutaj: kompilacja Pythonem 2.7 i pyflakes; klienci AP (`gra_client`, `kreator_client`) z prawdziwymi usługami ap-gra w kontenerze. Interfejsu wx nie da się tu uruchomić - plansze sprawdzą testy ręczne
 
 **Etap 7 - uruchomienie (Ty)**
-- [ ] Klucz API i limit kosztów na koncie
-- [ ] `.env` z kluczem na komputerze z AP, `docker compose up -d --build`
-- [ ] Testy funkcjonalne na komputerze z AP: stworzenie gry od początku do końca, WRÓĆ, przerwanie, 21. gra (strony), płynność animacji
+- [x] Klucz API
+- [ ] Limit kosztów na koncie - do potwierdzenia, że jest ustawiony (https://platform.claude.com/settings/billing)
+- [x] `.env` z kluczem na komputerze z AP, `docker compose up -d --build`
+- [x] Testy na komputerze z AP: stworzenie gry od początku do końca, WRÓĆ, płynność animacji (P1-P11, 2026-11-08)
+- [ ] Testy na komputerze z AP: przerwanie rozmowy (P12), ponad 12 gier - strony (P13)
 
 ## Główna niewiadoma
 
 Jakość gry napisanej bez poprawek człowieka. Bez osobnej próby przed kodem: sprawdzimy ją w testach funkcjonalnych na komputerze z AP, gdy całość będzie działać (decyzja 2026-11-07).
+
+Pierwsza próba (2026-11-08): całość bardzo dobra, scenariusz może być, ma kilka niedoróbek - na razie ich nie poprawiamy.
+
+## Podgląd działania, logi i koszty
+
+Polecenia i linki: [`podglad.md`](podglad.md).
 
 ## TODO
 
