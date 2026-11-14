@@ -1,6 +1,6 @@
 # Kompan: rozmowa z AI w AP
 
-**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem etap 4. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
+**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Kod etapu 4 (wiadomości) gotowy 2026-11-14, czeka na konto Gmail. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem testy K7-K8. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
 
@@ -67,6 +67,24 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 - Kanał: osobne konto Gmail, hasło aplikacji tylko w `.env`. Po etapie czatu w Wicero także Wicero, wraz z odpowiedziami odbiorców
 - Nieudana wysyłka czeka w kolejce i jest ponawiana; użytkownik o tym słyszy, a jeśli problem trwa, także przy następnej rozmowie
 
+Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
+- AI proponuje przekazanie w polu `przekaz` (pytanie, treść, proponowani odbiorcy). Przebieg pokazuje kod, przed zwykłą wypowiedzią AI, jak przegląd notatek. Bez konta Gmail albo bez osób na liście AI dostaje „lista jest pusta” i nic nie proponuje
+- Kolejność osób: najpierw te, które wskazało AI, potem reszta listy. Mieszczą się 3 osoby i „Nikomu”; przy większej liście po 2 osoby na stronę i **Inne osoby** (strony w kółko)
+- Gdy wybrano wszystkie osoby z listy, „Komuś jeszcze?” jest pomijane
+- Potwierdzenie: „Wiadomość dla: Mama, Jurek”, treść, „Wysłać?”. Treść najwyżej 250 znaków, żeby zmieściła się na ekranie. Nagrywane w chwili wyboru, więc AP czeka na nie kilka sekund
+- **Popraw** wraca do rozmowy: AI dopytuje, co zmienić (odpowiedzi do wyboru), i proponuje nową treść; odbiorcy zostają ci sami, więc od razu jest potwierdzenie
+- Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: „Radek przekazuje przez Kompana”. Treść: „Radek przekazuje przez Kompana (na podstawie rozmowy):”, wiadomość, a pod kreską: że spisało ją AI i mogło coś źle zrozumieć, oraz formułka o nieodpowiadaniu
+- O wyniku (wysłana do kolejki / nic nie wysłano / nieudana wysyłka / w końcu wysłana) AI dowiaduje się raz, dopisane do następnego wyboru użytkownika; o wiadomościach, które wciąż czekają, także na początku nowej rozmowy
+- AI nie zna adresów, tylko imiona i to, kim są
+
+`dane-kompan/osoby.json` (wpisuje osoba techniczna; zmiana działa bez restartu):
+```
+{"uzytkownik": "Radek",
+ "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "prosby": true},
+           {"imie": "Mama", "kto": "mama", "email": "...", "wiadomosci": true, "prosby": false}]}
+```
+`wiadomosci`: można mu coś przekazać; `prosby`: może prosić Kompana o rozmowę na jakiś temat (etap 5).
+
 ### Log, koszty, prywatność
 
 - Pełny log, zawsze: każde pytanie, wszystkie opcje, wybrana odpowiedź i wszystkie zapytania do AI. Czyta go tylko osoba techniczna
@@ -132,9 +150,10 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Okresowy przegląd i przycisk CO O MNIE WIESZ na ekranie wejścia
 - [x] Test K6 na komputerze z AP (2026-11-14). Uwaga użytkownika: przy nowym temacie AI od razu zgadywało szczegóły z typowego przebiegu (osoba ze szkoły = rówieśnik). Dopisana zasada „Najpierw podstawy, potem szczegóły” - do sprawdzenia na rozmowie
 
-**Etap 4 - wiadomości**
-- [ ] `osoby.json`, przebieg wyboru osób i zatwierdzania
-- [ ] Wysyłka przez Gmail, kolejka i ponawianie
+**Etap 4 - wiadomości** (kod gotowy 2026-11-14; testy z udawanym AI i udawanym Gmailem, plansza na atrapie `wx`). Zbudowany, zanim komputer z AP wrócił do testów - niezależny od nich: przebieg i wysyłkę robi kod, a ewentualne poprawki rozmowy dotyczą promptu
+- [x] `osoby.json`, przebieg wyboru osób i zatwierdzania
+- [x] Wysyłka przez Gmail, kolejka i ponawianie
+- [ ] Testy K7-K8 na komputerze z AP (potrzebne konto Gmail i `osoby.json`)
 
 **Etap 5 - prośby**
 - [ ] Polecenie dodające prośbę, sprawdzenie osoby na liście

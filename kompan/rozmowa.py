@@ -28,6 +28,7 @@ from kreator.rozmowa import audio_of, new_id
 
 from .koszty import Costs
 from .notatki import GUESS, MAX_NEW, NOTE_CHARS, REVIEW_MAX, USER, Notes
+from .wiadomosci import Outbox, People
 
 PROMPT = (Path(__file__).parent / "prompty" / "rozmowa.md").read_text(encoding="utf-8")
 SUMMARY_PROMPT = (Path(__file__).parent / "prompty" / "streszczenie.md").read_text(encoding="utf-8")
@@ -46,8 +47,15 @@ SCHEMA = {
             "additionalProperties": False}},
         # A good moment to show the review of new entries
         "pora_na_przeglad": {"type": "boolean"},
+        # A proposal to pass something on (docs/kompan.md -> Wiadomości); empty "tresc" - none
+        "przekaz": {"type": "object", "properties": {
+            "pytanie": {"type": "string"},
+            "tresc": {"type": "string"},
+            "dla": {"type": "array", "items": {"type": "string"}}},
+            "required": ["pytanie", "tresc", "dla"],
+            "additionalProperties": False},
     },
-    "required": ["wypowiedz", "opcje", "tytul_rozmowy", "zapamietaj", "pora_na_przeglad"],
+    "required": ["wypowiedz", "opcje", "tytul_rozmowy", "zapamietaj", "pora_na_przeglad", "przekaz"],
     "additionalProperties": False,
 }
 SUMMARY_SCHEMA = {
@@ -89,6 +97,19 @@ REVIEW_ONE = "Zapamiętałem: "
 ALL_GOOD, SOMETHING_WRONG, NOT_NOW = "Wszystko dobrze", "Coś jest źle", "Nie teraz"
 GOOD, WRONG, REST_GOOD = "Dobrze", "To nieprawda, usuń", "Reszta jest dobra"
 
+# Passing something on: screens made by the code, no AI
+MESSAGE_CHARS = 250  # the message must fit the screen with the recipients and "Wysłać?"
+ASK_LINES = 3
+NOBODY, MORE_PEOPLE, THATS_ALL = "Nikomu", "Inne osoby", "To wszystko"
+ANYONE_ELSE = "Komuś jeszcze?"
+SEND, FIX, DONT_SEND = "Wyślij", "Popraw", "Nie wysyłaj"
+FOR = "Wiadomość dla: "
+SEND_ASK = "Wysłać?"
+FIX_MESSAGE = ("Popraw wiadomość. Dopytaj, co w niej zmienić, a potem zaproponuj ją jeszcze raz "
+               "w polu przekaz; odbiorcy zostają ci sami.")
+QUEUED = " (Wiadomość przekazana do wysyłki, do: {}.)"
+NOT_SENT = " (Nic nie zostało wysłane.)"
+
 RETURN_LABEL = "Wróć do rozmowy: "
 # Fixed texts of the boards in AP, read in the narrator's voice
 INTERFACE = {
@@ -105,6 +126,13 @@ INTERFACE = {
     "nie_teraz": NOT_NOW,
     "dobrze": GOOD,
     "reszta_dobra": REST_GOOD,
+    "nikomu": NOBODY,
+    "inne_osoby": MORE_PEOPLE,
+    "to_wszystko": THATS_ALL,
+    "komus_jeszcze": ANYONE_ELSE,
+    "wyslij": SEND,
+    "popraw": FIX,
+    "nie_wysylaj": DONT_SEND,
     "kompan": "Kompan",
     "wroc_do_rozmowy": "Wróć do rozmowy",
     "nowa_rozmowa": "Nowa rozmowa",
@@ -125,6 +153,7 @@ PYTANIE = "pytanie"
 BLAD = "blad"  # the AI failed; WRÓĆ shows the last question, coming back tries again
 LIMIT = "limit"  # the daily cost limit; coming back the next day tries again
 PRZEGLAD = "przeglad"  # the review of new entries, before the AI's question
+PRZEKAZ = "przekaz"  # passing something on: to whom, then Wyślij / Popraw / Nie wysyłaj
 
 ZONE = ZoneInfo("Europe/Warsaw")
 DAYS = ("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")
@@ -140,8 +169,9 @@ def stamp(now: datetime | None = None) -> str:
     return f"({DAYS[local.weekday()]} {local:%d.%m.%Y, %H:%M})"
 
 
-def problems(answer: dict) -> list[str]:
-    """What breaks the rules in a (schema-valid) AI answer; [] = fine."""
+def problems(answer: dict, people: list[str] = ()) -> list[str]:
+    """What breaks the rules in a (schema-valid) AI answer; [] = fine.
+    people - who messages can go to (with nobody, a proposal is ignored)."""
     found = []
     text = answer["wypowiedz"].strip()
     if not text:
@@ -168,7 +198,21 @@ def problems(answer: dict) -> list[str]:
     for note in notes:
         if not 1 <= len(note["tekst"].strip()) <= NOTE_CHARS:
             found.append(f"wpis {note['tekst']!r} musi mieć od 1 do {NOTE_CHARS} znaków")
+    proposal = answer.get("przekaz") or {}
+    if people and proposal.get("tresc", "").strip():
+        ask = proposal["pytanie"].strip()
+        if not ask or text_lines(ask) > ASK_LINES or ask.count("?") != 1:
+            found.append("pole przekaz.pytanie: jedno krótkie pytanie, na przykład „… Przekazać to komuś?”")
+        if len(proposal["tresc"].strip()) > MESSAGE_CHARS:
+            found.append(f"pole przekaz.tresc: najwyżej {MESSAGE_CHARS} znaków")
+        unknown = [name for name in proposal["dla"] if name not in people]
+        if unknown:
+            found.append(f"pole przekaz.dla: tylko osoby z listy, nie {', '.join(unknown)}")
     return found
+
+
+def message_text(names: list[str], text: str) -> str:
+    return f"{FOR}{', '.join(names)}\n\n{text}\n\n{SEND_ASK}"
 
 
 def review_text(texts: list[str]) -> str:
@@ -184,6 +228,10 @@ def _thread(work: Callable[[], None]) -> None:
     threading.Thread(target=work, daemon=True).start()
 
 
+def _no_mail(to: str, subject: str, body: str) -> None:
+    raise RuntimeError("brak konta Gmail w .env.kompan")
+
+
 def _write_json(path: Path, data: dict) -> None:
     partial = path.with_name(path.name + ".part")
     partial.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -194,7 +242,8 @@ class Kompan:
     """What all the conversations share: notes, the summary, the AI, costs."""
 
     def __init__(self, data: Path, ai: AI, narrator=None, audio_url: str = "", limit: float = 5.0,
-                 run: Callable[[Callable[[], None]], None] = _thread, costs: Costs | None = None):
+                 run: Callable[[Callable[[], None]], None] = _thread, costs: Costs | None = None,
+                 send: Callable[[str, str, str], None] | None = None):
         self.data = data
         self.ai = ai
         self.narrator = narrator  # tools.nagraj.Narrator or None (no recordings)
@@ -203,6 +252,10 @@ class Kompan:
         self.costs = costs or Costs(data / "koszty.jsonl", limit)
         self.ai.on_usage = self.costs.add
         self.notes = Notes(data)
+        # Messages: send(to, subject, body); without it (no Gmail) nothing is proposed
+        self.people = People(data)
+        self.messages_on = send is not None
+        self.outbox = Outbox(data, send or _no_mail, Log(data / "wiadomosci.jsonl"), run)
         self.conversations_dir = data / "rozmowy"
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self._conversations: dict[str, Conversation] = {}
@@ -225,10 +278,20 @@ class Kompan:
         known = ("## Co wiesz o tej osobie\n\n"
                  + (f"Notatki startowe:\n{start}\n\n" if start else "")
                  + "Twoje notatki (pole zapamietaj) są zawsze na końcu ostatniej wiadomości.\n\n"
-                 f"## Streszczenie wcześniejszych rozmów\n\n{self.summary() or 'To Wasza pierwsza rozmowa.'}")
+                 f"## Streszczenie wcześniejszych rozmów\n\n{self.summary() or 'To Wasza pierwsza rozmowa.'}\n\n"
+                 f"## Komu możesz coś przekazać (pole przekaz)\n\n{self.people_for_ai()}")
         # The cache ends here: the rules and what is known change rarely
         return [{"type": "text", "text": PROMPT},
                 {"type": "text", "text": known, "cache_control": {"type": "ephemeral"}}]
+
+    def message_people(self) -> list[str]:
+        """Who the AI may propose; nobody without the mail account."""
+        return self.people.names() if self.messages_on else []
+
+    def people_for_ai(self) -> str:
+        if not self.message_people():
+            return "Lista jest pusta: nie proponuj przekazania (pole przekaz zostaw puste)."
+        return self.people.for_ai()
 
     def with_notes(self, messages: list[dict]) -> list[dict]:
         """The notes go after the last cache point: a new note then costs only
@@ -313,6 +376,11 @@ class Conversation:
         self.folded = 0  # this many first steps are already in the summary
         # The review in progress: {"wpisy": [ids], "etap": "lista" | "wpis", "i": entry shown}
         self.review: dict | None = None
+        # Passing something on in progress: {"etap": "kto" | "jeszcze" | "potwierdz",
+        # "pytanie", "tresc", "kandydaci": [names], "odbiorcy": [names], "strona": page}
+        self.message: dict | None = None
+        self.fix_for: list[str] = []  # after Popraw: the recipients of the next proposal
+        self.info = ""  # for the AI with the next choice: what happened to a message
         self._generation = 0  # bumped by WRÓĆ - older AI answers are dropped
         self._working: int | None = None  # the generation an AI work runs for
         state = directory / "stan.json"
@@ -321,6 +389,8 @@ class Conversation:
             self.steps, self.status = saved["kroki"], saved["status"]
             self.opening, self.folded = saved["otwarcie"], saved["streszczone"]
             self.review = saved.get("przeglad")
+            self.message, self.fix_for = saved.get("przekaz"), saved.get("poprawa", [])
+            self.info = saved.get("informacja", "")
 
     # --- the AI in the background ---------------------------------------
 
@@ -367,8 +437,10 @@ class Conversation:
             new = notes.new_texts(answer["zapamietaj"])
             # What a review would show if it starts now (the oldest waiting entries)
             reviewed = ([e["tekst"] for e in notes.pending()] + new)[:REVIEW_MAX]
+            proposal = self._proposal(answer["przekaz"])
             self._record([answer["wypowiedz"], *answer["opcje"], RETURN_LABEL + answer["tytul_rozmowy"], *new,
-                          *(review_texts(reviewed) if answer["pora_na_przeglad"] else [])])
+                          *(review_texts(reviewed) if answer["pora_na_przeglad"] and not proposal else []),
+                          *(self._proposal_texts(proposal) if proposal else [])])
         except AIError as error:
             with self._lock:
                 if generation == self._generation:
@@ -389,7 +461,12 @@ class Conversation:
             if added:
                 self.log.write("zapamietane", wpisy=added)
             self.status = PYTANIE
-            if answer["pora_na_przeglad"] and notes.review_due():
+            if proposal:
+                self.message = proposal
+                self.fix_for = []
+                self.status = PRZEKAZ
+                self.log.write("przekaz_start", przekaz=proposal)
+            elif answer["pora_na_przeglad"] and notes.review_due():
                 entries = notes.pending()[:REVIEW_MAX]
                 self.review = {"wpisy": [e["id"] for e in entries], "etap": "lista", "i": 0}
                 self.status = PRZEGLAD
@@ -403,14 +480,17 @@ class Conversation:
         for attempt in range(1, ATTEMPTS + 1):
             answer = self.kompan.ai.ask(self.log, "rozmowa", self.kompan.system(),
                                         self.kompan.with_notes(messages), SCHEMA)
-            found = problems(answer)
+            found = problems(answer, self.kompan.message_people())
             if not found:
+                proposal = answer["przekaz"]
                 return {"wypowiedz": answer["wypowiedz"].strip(),
                         "opcje": [o.strip() for o in answer["opcje"]],
                         "tytul_rozmowy": answer["tytul_rozmowy"].strip(),
                         "zapamietaj": [{"tekst": n["tekst"].strip(), "skad": n["skad"]}
                                        for n in answer.get("zapamietaj", [])],
-                        "pora_na_przeglad": bool(answer.get("pora_na_przeglad"))}
+                        "pora_na_przeglad": bool(answer.get("pora_na_przeglad")),
+                        "przekaz": {"pytanie": proposal["pytanie"].strip(), "tresc": proposal["tresc"].strip(),
+                                    "dla": [name.strip() for name in proposal["dla"]]}}
             self.log.write("odpowiedz_ai_odrzucona", proba=attempt, problemy=found)
             messages = messages + [
                 {"role": "assistant", "content": json.dumps(answer, ensure_ascii=False)},
@@ -458,14 +538,16 @@ class Conversation:
 
     def start(self) -> None:
         with self._lock:
-            self.opening = f"{stamp()} {START}"
+            waiting = sorted({m["do"] for m in self.kompan.outbox.waiting() if m["proby"]})
+            self.opening = f"{stamp()} {START}" + (
+                f" (Wciąż nie udało się wysłać wiadomości do: {', '.join(waiting)}.)" if waiting else "")
             self.log.write("start")
             self._ask(before=lambda: self.kompan.fold_finished(self))
 
     def answer(self, number: int) -> None:
         with self._lock:
             options = self._options()
-            if self.status not in (PYTANIE, PRZEGLAD):
+            if self.status not in (PYTANIE, PRZEGLAD, PRZEKAZ):
                 raise ConversationError(f"Teraz nie można odpowiadać (stan: {self.status}).")
             if not 1 <= number <= len(options):
                 raise ConversationError(f"Nie ma opcji {number}.")
@@ -474,11 +556,99 @@ class Conversation:
             if self.status == PRZEGLAD:
                 self._review_answer(chosen)
                 return
-            message = chosen if chosen in FIXED else CHOICE + chosen
-            if self.kompan.notes.review_due():
-                message += WAITING.format(len(self.kompan.notes.pending()))
-            self.steps[-1]["wybor"] = f"{stamp()} {message}"
-            self._ask()
+            if self.status != PRZEKAZ:
+                message = chosen if chosen in FIXED else CHOICE + chosen
+                if self.kompan.notes.review_due():
+                    message += WAITING.format(len(self.kompan.notes.pending()))
+                self._tell(message)
+                return
+            record = self._message_answer(chosen)
+        # The confirmation names the chosen people - recorded now, outside the lock
+        # (AP waits for this answer a moment; a few seconds at most)
+        if record:
+            self._record([record])
+
+    def _tell(self, message: str) -> None:
+        """The user's choice (with what the AI should know) goes to the AI."""
+        message += self.info + self.kompan.outbox.news()
+        self.info = ""
+        self.steps[-1]["wybor"] = f"{stamp()} {message}"
+        self._ask()
+
+    # --- passing something on (no AI) ---------------------------------------
+
+    def _proposal(self, proposal: dict) -> dict | None:
+        """The AI's proposal as a flow to show, or None."""
+        people = self.kompan.message_people()
+        if not (people and proposal["tresc"]):
+            return None
+        first = [name for name in dict.fromkeys(proposal["dla"]) if name in people]
+        candidates = first + [name for name in people if name not in first]
+        flow = {"etap": "kto", "pytanie": proposal["pytanie"], "tresc": proposal["tresc"],
+                "kandydaci": candidates, "odbiorcy": [], "strona": 0}
+        again = [name for name in self.fix_for if name in people]
+        if again:  # after Popraw - the same people, straight to the confirmation
+            flow.update(etap="potwierdz", odbiorcy=again)
+        return flow
+
+    def _proposal_texts(self, flow: dict) -> list[str]:
+        if flow["etap"] == "potwierdz":
+            return [message_text(flow["odbiorcy"], flow["tresc"])]
+        return [flow["pytanie"], *flow["kandydaci"]]
+
+    def _message_screen(self) -> tuple[str, list[str]]:
+        flow = self.message
+        if flow["etap"] == "potwierdz":
+            return message_text(flow["odbiorcy"], flow["tresc"]), [SEND, FIX, DONT_SEND]
+        rest = [name for name in flow["kandydaci"] if name not in flow["odbiorcy"]]
+        first = flow["etap"] == "kto"
+        text, last = (flow["pytanie"], NOBODY) if first else (ANYONE_ELSE, THATS_ALL)
+        if len(rest) <= MAX_OPTIONS - 1:
+            return text, rest + [last]
+        per = MAX_OPTIONS - 2  # room for "Inne osoby" and the last button
+        pages = -(-len(rest) // per)
+        start = flow["strona"] % pages * per
+        return text, rest[start:start + per] + [MORE_PEOPLE, last]
+
+    def _message_answer(self, chosen: str) -> str:
+        """Returns a text to record before it is shown ("" - none)."""
+        flow = self.message
+        if chosen == SEND:
+            people = [self.kompan.people.find(name) for name in flow["odbiorcy"]]
+            queued = self.kompan.outbox.add(self.kompan.people.user(), [p for p in people if p],
+                                            flow["tresc"], self.id)
+            names = ", ".join(m["do"] for m in queued)
+            self.log.write("wiadomosc_do_wysylki", do=[m["do"] for m in queued], tresc=flow["tresc"])
+            return self._message_end(QUEUED.format(names), "wyslij")
+        if chosen in (DONT_SEND, NOBODY):
+            return self._message_end(NOT_SENT, "nie")
+        if chosen == FIX:
+            self.fix_for = flow["odbiorcy"]
+            self.message = None
+            self.log.write("przekaz_koniec", wynik="popraw")
+            self._tell(FIX_MESSAGE)
+            return ""
+        if chosen == MORE_PEOPLE:
+            flow["strona"] += 1
+        elif chosen == THATS_ALL:
+            flow["etap"] = "potwierdz"
+        else:  # a person
+            flow["odbiorcy"].append(chosen)
+            flow["strona"] = 0
+            rest = [name for name in flow["kandydaci"] if name not in flow["odbiorcy"]]
+            flow["etap"] = "jeszcze" if rest else "potwierdz"
+        self._shown()
+        self._save()
+        return message_text(flow["odbiorcy"], flow["tresc"]) if flow["etap"] == "potwierdz" else ""
+
+    def _message_end(self, info: str, result: str) -> str:
+        self.info += info
+        self.message = None
+        self.status = PYTANIE
+        self.log.write("przekaz_koniec", wynik=result)
+        self._shown()
+        self._save()
+        return ""
 
     # --- the review of new entries (no AI) --------------------------------
 
@@ -557,7 +727,7 @@ class Conversation:
             self.log.write("wyjscie", status=self.status)
 
     def can_go_back(self) -> bool:
-        if self.status == PRZEGLAD:
+        if self.status in (PRZEGLAD, PRZEKAZ):
             return False
         active = len(self.steps) - self.folded
         return active >= 2 if self.status == PYTANIE else active >= 1
@@ -568,11 +738,15 @@ class Conversation:
         return self.steps[-1]["ai"]["tytul_rozmowy"] if self.steps else ""
 
     def _text(self) -> str:
+        if self.status == PRZEKAZ:
+            return self._message_screen()[0]
         if self.status == PRZEGLAD:
             return self._review_screen()[0]
         return self.steps[-1]["ai"]["wypowiedz"] if self.status == PYTANIE else ""
 
     def _answers(self) -> list[str]:
+        if self.status == PRZEKAZ:
+            return self._message_screen()[1]
         if self.status == PRZEGLAD:
             return self._review_screen()[1]
         return self.steps[-1]["ai"]["opcje"] if self.status == PYTANIE else []
@@ -605,4 +779,5 @@ class Conversation:
     def _save(self) -> None:
         _write_json(self.directory / "stan.json", {
             "id": self.id, "status": self.status, "otwarcie": self.opening,
-            "streszczone": self.folded, "przeglad": self.review, "kroki": self.steps})
+            "streszczone": self.folded, "przeglad": self.review, "przekaz": self.message,
+            "poprawa": self.fix_for, "informacja": self.info, "kroki": self.steps})

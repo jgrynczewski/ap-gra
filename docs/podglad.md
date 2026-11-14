@@ -71,6 +71,9 @@ grep -E '"rodzaj": "(pokazane|odpowiedz_uzytkownika)"' "$KLOG" | cut -c1-500   #
 tail -n 5 ~/ap-gra/dane-kompan/koszty.jsonl                          # koszt ostatnich odpowiedzi AI
 curl -s localhost:8768/v1/kompan/notatki | python3 -m json.tool      # co Kompan zapamiętał
 grep -E '"rodzaj": "(zapamietane|przeglad_start|wpis_usuniety)"' "$KLOG" | cut -c1-300   # zapisy i przeglądy
+grep -E '"rodzaj": "(przekaz_start|przekaz_koniec|wiadomosc_do_wysylki)"' "$KLOG" | cut -c1-400   # przekazania
+tail -n 5 ~/ap-gra/dane-kompan/wiadomosci.jsonl                      # próby wysyłki (wyslana / wysylka_blad)
+grep -l '"stan": "czeka"' ~/ap-gra/dane-kompan/wiadomosci/*.json     # wiadomości czekające na wysyłkę
 docker logs --tail 30 ap-gra-kompan
 ```
 

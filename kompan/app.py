@@ -24,6 +24,7 @@ from kreator.rozmowa import audio_of
 
 from .notatki import GUESS
 from .rozmowa import INTERFACE, RETURN_LABEL, ConversationError, Conversation, Kompan
+from .wiadomosci import Gmail
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("AP_KOMPAN_DATA", ROOT / "dane-kompan"))
@@ -31,6 +32,8 @@ MODELS = Path(os.environ.get("AP_GRA_MODELS", ROOT / "models"))
 MODEL = os.environ.get("AP_KOMPAN_MODEL", "claude-opus-5-5")
 EFFORT = os.environ.get("AP_KOMPAN_EFFORT", "medium")
 LIMIT_USD = float(os.environ.get("AP_KOMPAN_LIMIT_USD", "5"))
+# Kompan's own Gmail account and its app password (only in .env.kompan)
+GMAIL = Gmail(os.environ.get("AP_KOMPAN_GMAIL", ""), os.environ.get("AP_KOMPAN_GMAIL_HASLO", ""))
 AUDIO_URL = "/v1/kompan/audio"
 RECORDING = re.compile(r"[0-9a-f]+\.wav")
 CONVERSATION_ID = re.compile(r"[0-9a-z-]+")
@@ -61,11 +64,14 @@ async def lifespan(app: FastAPI):
     narrator = app.state.kompan.narrator
     if narrator is not None:
         threading.Thread(target=record_interface, args=(narrator,), daemon=True).start()
+    # Messages that failed (no internet) are sent again every few minutes
+    threading.Thread(target=app.state.kompan.outbox.retry_forever, daemon=True).start()
     yield
 
 
 app = FastAPI(title="ap-gra-kompan", lifespan=lifespan)
-app.state.kompan = Kompan(DATA, AI(model=MODEL, effort=EFFORT), _narrator(), AUDIO_URL, LIMIT_USD)
+app.state.kompan = Kompan(DATA, AI(model=MODEL, effort=EFFORT), _narrator(), AUDIO_URL, LIMIT_USD,
+                          send=GMAIL if GMAIL.configured() else None)
 
 
 class NotFound(Exception):
@@ -105,7 +111,11 @@ def health() -> dict:
             # What WRÓĆ DO ROZMOWY goes back to; null - the first visit
             "ostatnia": {"id": latest.id, "tytul": latest.title(), "etykieta": label,
                          "audio": audio_of(narrator, label, AUDIO_URL)} if latest else None,
-            "notatki": len(kompan.notes.entries())}
+            "notatki": len(kompan.notes.entries()),
+            # Messages (stage 4): mail account set, people from osoby.json, waiting to be sent
+            "poczta": kompan.messages_on, "osoby": kompan.people.names(),
+            "osoby_blad": kompan.people.problem(),
+            "wiadomosci_czekaja": len(kompan.outbox.waiting())}
 
 
 def _notes() -> dict:
