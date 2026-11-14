@@ -1,6 +1,6 @@
 # Kompan: rozmowa z AI w AP
 
-**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09, bez prawdziwego AI), następny krok: pierwszy test ręczny na komputerze z AP. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
+**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem etap 4. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
 
@@ -119,18 +119,18 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Zapis rozmów, wznowienie po restarcie, streszczanie starszych wymian
 - [x] Notatki startowe tylko do odczytu
 - [x] Koszt z tokenów i dzienny limit
-- Do sprawdzenia w etapie 2: pierwsze prawdziwe zapytanie (format z pamięcią podręczną sprawdzony tylko na udawanym AI) i prawdziwy koszt
+- [x] Pierwsze prawdziwe zapytanie i prawdziwy koszt (2026-11-14): ok. 1 cent za zwykłe pytanie, 2,6 centa za pierwsze w rozmowie; skoki do 4-5 centów po każdym nowym wpisie usunięte przeniesieniem notatek za punkt pamięci podręcznej
 
 **Etap 2 - AP** (kod gotowy 2026-11-08; logika planszy na atrapie `wx`, klient z Pythona 2.7 przeciw prawdziwemu serwerowi z udawanym AI)
 - [x] `kompan_client.py`, `modules/kompan.py`: ekran wejścia i plansza rozmowy
 - [x] Kafelek KOMPAN na planszy NOWE (zamiast pustego pola), ikona
-- [ ] Sprawdzić, czy 4 odpowiedzi i 5 przycisków na dole mieszczą się na ekranie i czy skanowanie nie jest za długie
-- [ ] **Pierwszy test ręczny: czy to się dobrze rozmawia.** Główna niewiadoma, więc zanim zbudujemy resztę
+- [x] Sprawdzić, czy 4 odpowiedzi i 5 przycisków na dole mieszczą się na ekranie i czy skanowanie nie jest za długie (K2, 2026-11-14)
+- [x] **Pierwszy test ręczny: czy to się dobrze rozmawia.** (K4, 2026-11-14) Sprawnie doszedł do sedna sprawy. Poprawione: jeden wpis zamiast kilku wersji tej samej sprawy; osoby pomagające tylko po imieniu albo „osoby, które Ci pomagają”
 
 **Etap 3 - pamięć** (kod gotowy 2026-11-09; testy z udawanym AI, w tym klient z Pythona 2.7 przeciw prawdziwemu serwerowi). Zbudowany przed testem K4 na prośbę użytkownika, żeby nie czekać; jeśli K4 pokaże, że rozmowa wymaga zmian, poprawimy głównie prompt
 - [x] Zapisywanie przez AI, źródło wpisu, poprzednie wersje
 - [x] Okresowy przegląd i przycisk CO O MNIE WIESZ na ekranie wejścia
-- [ ] Test K6 na komputerze z AP
+- [x] Test K6 na komputerze z AP (2026-11-14). Uwaga użytkownika: przy nowym temacie AI od razu zgadywało szczegóły z typowego przebiegu (osoba ze szkoły = rówieśnik). Dopisana zasada „Najpierw podstawy, potem szczegóły” - do sprawdzenia na rozmowie
 
 **Etap 4 - wiadomości**
 - [ ] `osoby.json`, przebieg wyboru osób i zatwierdzania
@@ -147,7 +147,7 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [ ] Prośby od kontaktów, wiadomości i odpowiedzi odbiorców przez Wicero
 
 **Uruchomienie (Ty)**
-- [ ] Klucz API `ap-kompan` w `.env.kompan` na komputerze z AP (wzór: `.env.kompan.example`)
+- [x] Klucz API `ap-kompan` w `.env.kompan` na komputerze z AP (wzór: `.env.kompan.example`) - 2026-11-14
 - [ ] Konto Gmail i hasło aplikacji w `.env` (przed etapem 4)
 - [ ] Dostęp SSH do komputera z AP (przed etapem 5)
 - [ ] Lista osób i notatki startowe
