@@ -10,7 +10,7 @@ osoby.json (written by hand on the AP computer, never in the repo):
 
     {"uzytkownik": "Radek",
      "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...",
-                "wiadomosci": true, "prosby": true}]}
+                "wiadomosci": true, "pisze": true}]}
 """
 
 from __future__ import annotations

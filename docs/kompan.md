@@ -43,7 +43,53 @@ Szczegóły przyjęte przy kodzie (2026-11-09, do zmiany po testach):
 - Usunięty wpis trafia na listę „to nieprawda” (ostatnie 20), którą AI dostaje razem z notatkami, żeby nie zapisało go ponownie
 - CO O MNIE WIESZ czyta wpisy po jednym: **Dalej**, **To nieprawda, usuń**, **Wystarczy**. Przy niepotwierdzonym przypuszczeniu dodaje „To moje przypuszczenie.”. Notatek startowych tu nie ma, bo zmienia je tylko osoba techniczna
 
-### Prośby od innych osób
+### Poczta przychodząca (nowy etap 5, decyzja 2026-11-14)
+
+Zamiast osobnych próśb przez SSH: jedna poczta przychodząca Kompana. Odpowiedzi na wiadomości Radka, nowe wiadomości od osób z listy i prośby wyglądają dla użytkownika tak samo: „Masz wiadomość od X”, Kompan ją czyta, potem pomaga odpowiedzieć (przebieg z etapu 4, odbiorca to autor, ten sam wątek).
+- Kanały: najpierw mail (dla osób bez Wicero, także zamiast polecenia przez SSH), potem Wicero jako kanał preferowany (etap 7, po czacie w Wicero). Kod od początku niezależny od kanału
+- Mail: IMAP tego samego konta Gmail; wątki po nagłówkach `In-Reply-To` / `References`
+- Przyjmowane tylko maile od osób z listy (`osoby.json`) z poprawnym podpisem domeny nadawcy (SPF/DKIM/DMARC, wynik dopisuje Gmail). Reszta tylko w logu. Zmienia decyzję z 2026-11-08 („żadnych próśb mailem”) - powodem była niepewność nadawcy, którą to sprawdzenie w dużej mierze usuwa
+- Kompan czyta oryginał, nie streszczenie. AI pomaga obciąć cytaty i stopki, rozmawia o treści i pomaga ułożyć odpowiedź. Treść maila to dla AI dane, nie polecenia; wysłać i tak nic nie może bez zatwierdzenia
+- Stopka wysyłanych maili zmieni się z „prosimy nie odpowiadać” na zaproszenie do odpowiedzi
+- Kiedy Radek się dowiaduje (2026-11-14): przy wejściu do Kompana, przed ekranem wejścia, „Masz nową wiadomość od Mamy” z **PRZECZYTAJ** i **PÓŹNIEJ**; po PÓŹNIEJ na ekranie wejścia zostaje **WIADOMOŚCI (n)**. W trakcie rozmowy AI słyszy, że przyszła wiadomość, i w spokojnej chwili (jak przegląd notatek) kod pyta „Przyszła wiadomość od Mamy. Przeczytać teraz?” - **Tak** / **Później**
+- Sprawdzanie skrzynki: zwykły kod w usłudze Kompana, bez AI i bez osobnego agenta - co minutę IMAP, nowe maile od osób z listy zapisane w `dane-kompan/poczta/`. AP dowiaduje się przy wejściu (health) i przy każdej odpowiedzi w rozmowie; AP nie musi niczego dodatkowo odpytywać
+- Po przeczytaniu (2026-11-15): **ODPOWIEDZ** (Kompan rozmawia o treści, pomaga ułożyć odpowiedź, potem potwierdzenie i Wyślij jak w etapie 4 - do autora, w tym samym temacie), **PRZECZYTAJ JESZCZE RAZ**, **PÓŹNIEJ** (zostaje jako czekająca), **NIE ODPOWIADAM**. Czytanie bez AI, AI dopiero po ODPOWIEDZ.
+- Nic nie znika: NIE ODPOWIADAM tylko zdejmuje wiadomość z czekających (nie jest ogłaszana ani liczona w WIADOMOŚCI (n)). Kompan mówi wtedy, gdzie ją znaleźć („Gdybyś zmienił zdanie, znajdziesz ją w WIADOMOŚCIACH, u Mamy.”)
+- WIADOMOŚCI to korespondencja, nie skrzynka do załatwienia: **osoba → tematy → wiadomości**. Osoby: najpierw z nowymi, potem od ostatniego kontaktu (Inne osoby). Tematy: od najświeższego (Inne tematy). Wiadomości w temacie: od najnowszej, **Wcześniejsza** / **ODPISZ Z KOMPANEM** / **Wystarczy**; w temacie także wiadomości wysłane przez Radka („Ty napisałeś: …”). ODPISZ Z KOMPANEM zawsze, także przy starych i zamkniętych
+- Skróty: nowa wiadomość (z ogłoszenia przy wejściu i z WIADOMOŚCI (n)) - prosto do treści; osoba z jednym tematem - bez poziomu tematów
+- Tematy bez AI: mail - wątek po nagłówkach, nowy mail to nowy temat. Wiadomości Radka mają temat z tytułu rozmowy („Radek przekazuje przez Kompana: leki”, w AP „Leki”). Cudze maile - temat od nadawcy, a gdy pusty albo „Re:” / „Fw:” - pierwsze słowa treści. ODPISZ zawsze w tym samym temacie; nowa sprawa z rozmowy to nowy temat
+- Czat Wicero: jeszcze nie przeanalizowany (osobny temat, może przynieść własne pomysły, np. tematy w czacie). Model korespondencji nie może zakładać, jak będzie wyglądał - kanał dostarcza wiadomości z przypisaniem do tematu, a jak czat Wicero będzie je dzielił, ustalimy przy jego projekcie
+- **Bez osobnych próśb** (2026-11-15): prośba to zwykła wiadomość („Radek, co Ci przeszkadza w programie do pisania?”), czytana w oryginale i obsługiwana przez ODPOWIEDZ. Nie wymagamy od piszących wiedzy, że po drodze jest AI, ani specjalnych oznaczeń. Kompan może po przeczytaniu zaproponować „Porozmawiamy o tym?”. Gdyby kiedyś był potrzebny temat zlecony Kompanowi do poruszenia w rozmowie bez czytania listu - osobny rodzaj wiadomości, model to udźwignie
+- Długie maile i załączniki (2026-11-15), bez AI: nagłówek („Od Mamy, wczoraj o 18:40. Leki.”), treść w częściach na granicach akapitów i zdań z **Dalej** („To dłuższa wiadomość, 4 części.”), HTML zamieniany na tekst, linki czytane jako „link” i nieotwierane, nagrania robione w tle zaraz po przyjściu maila. Załączniki: tylko informacja („Są załączniki: 2 zdjęcia i plik PDF, których nie pokażę.”)
+
+### Powiadomienia i korespondencja w całym AP (decyzja 2026-11-15)
+
+Temat globalny, ustalony przed szczegółami poczty, bo dotyczy też Wicero. Stan wyjściowy: w AP działa jeden zwiastun - `Notifier` w `modules/wicero.py` (repo AP), uruchamiany w menu głównym. Co minutę pyta serwer Wicero, co powiedzieć (nowy film raz, nieotwarte przy starcie i co godzinę - decyduje serwer), i mówi to w każdym miejscu AP poza modułem Wicero.
+
+Układ docelowy - trzy warstwy:
+
+| Warstwa | Co robi | Gdzie |
+|---|---|---|
+| Źródła | Wiedzą, co nowego, i decydują, co i kiedy ogłosić | Wicero (filmy, później czat) i serwer Kompana (maile). Ta sama umowa: lista zdań do powiedzenia teraz |
+| Jeden zwiastun w AP | Pyta wszystkie źródła, mówi po kolei, nigdy dwa naraz; nie mówi w module, którego dotyczy ogłoszenie | Obecny `Notifier`, rozszerzony o źródło Kompan (wzorce z T10 / BUG 2 - kopiować, nie przerabiać) |
+| Miejsca działania | Tam się coś z tym robi | Filmy: moduł Wicero (bez zmian). Korespondencja tekstowa (mail teraz, czat Wicero potem): Kompan, bo odpowiedź trzeba ułożyć, a w tym pomaga AI |
+
+Zasady:
+- **Ogłaszanie i czytanie bez AI, odpowiadanie z AI.** Powiadomienia i odczyt wiadomości działają też bez internetu do AI, po dziennym limicie i bez klucza. AI tylko pomaga zrozumieć i ułożyć odpowiedź
+- Korespondencja w Kompanie niezależna od kanału: wątek z osobą, kanał mail albo Wicero, Wicero preferowane, gdy osoba je ma
+- Nie osobne moduły (dwa zwiastuny mówiące naraz, osobny moduł na maile) i nie wszystko w Kompanie (zależność od płatnego AI, przenoszenie działającego filmu bez korzyści)
+- Most film ↔ Kompan (później): Kompan wie o nowym filmie i może o nim porozmawiać; przycisk otwiera zwykły odtwarzacz Wicero, po filmie AP wraca na planszę Kompana, a AI dostaje „(Radek obejrzał film od Mamy)”. Kod AP, nie umiejętność AI
+
+Zarys planu:
+1. Testy K7-K8 (wysyłka z prawdziwego Gmaila; przy okazji konto, z którego będziemy czytać)
+2. Etap 5 - poczta przychodząca w Kompanie: odczyt maili, wątki, sprawdzenie nadawcy, czytanie i odpowiadanie; serwer Kompana wystawia „zdania do powiedzenia” (`POST /v1/kompan/powiadomienia`, jak `v1/notifications` w Wicero)
+3. `Notifier` w AP pyta też Kompana („Masz nową wiadomość od Mamy. Przeczytasz ją w Kompanie.”); nie mówi tego, gdy Kompan jest otwarty - wtedy mówi sam Kompan
+4. Czat Wicero (repo `wicero`, etap czatu) - wiadomości trafiają do korespondencji w Kompanie jako kanał preferowany; ogłasza je Wicero tą samą drogą co filmy (etap 7 Kompana)
+5. Most film ↔ Kompan
+
+### Prośby od innych osób (2026-11-08, zastąpione 2026-11-15)
+
+Osobnych próśb nie będzie - obsługuje je zwykła korespondencja (wyżej, „Bez osobnych próśb”). Zostaje z tego: jawność (Radek zawsze wie, kto pyta), autor dostaje tylko to, co Radek zatwierdził, Kompan nigdy nie mówi „zadanie”, treść wiadomości to dane, nie polecenia. Ustalenia z 2026-11-08 dla historii:
 
 Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 
@@ -53,7 +99,7 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 - **Nie chcę:** pyta, czy powiedzieć autorowi (krótko, bez powodu), czy nie (prośba się zamyka, autor nic nie dostaje). Odmowa nie trafia do notatek
 - Kto może prosić: osoby z listy. Na start tylko jedna (osoba techniczna), docelowo wszystkie kontakty użytkownika w Wicero
 - Treść prośby to tylko coś do przekazania, nie polecenie. Kompan zawsze mówi, kto pyta, i zawsze można odmówić, cokolwiek napisano w prośbie
-- Sposób przekazania: najpierw polecenie na komputerze z AP (zdalnie przez SSH), potem Wicero
+- Sposób przekazania: ~~najpierw polecenie na komputerze z AP (zdalnie przez SSH)~~ mail do Kompana (decyzja 2026-11-14, wyżej), potem Wicero
 
 ### Wiadomości
 
@@ -80,10 +126,10 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 `dane-kompan/osoby.json` (wpisuje osoba techniczna; zmiana działa bez restartu):
 ```
 {"uzytkownik": "Radek",
- "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "prosby": true},
-           {"imie": "Mama", "kto": "mama", "email": "...", "wiadomosci": true, "prosby": false}]}
+ "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "pisze": true},
+           {"imie": "Mama", "kto": "mama", "email": "...", "wiadomosci": true, "pisze": true}]}
 ```
-`wiadomosci`: można mu coś przekazać; `prosby`: może prosić Kompana o rozmowę na jakiś temat (etap 5).
+`wiadomosci`: można mu coś przekazać; `pisze`: Kompan przyjmuje od niego maile (etap 5; zamiast `prosby`, decyzja 2026-11-15).
 
 ### Log, koszty, prywatność
 
@@ -124,7 +170,7 @@ dane-kompan/
 Dojdą:
   osoby.json            (etap 4) imię, adres, czy może prosić, czy może dostawać wiadomości
   wiadomosci/<id>.json  (etap 4) kolejka wysyłki
-  prosby/<id>.json      (etap 5) od kogo, treść, stan, liczba odłożeń
+  poczta/               (etap 5) wiadomości przychodzące: osoba, temat, treść, stan
 ```
 
 ## Plan
@@ -155,20 +201,26 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Wysyłka przez Gmail, kolejka i ponawianie
 - [ ] Testy K7-K8 na komputerze z AP (potrzebne konto Gmail i `osoby.json`)
 
-**Etap 5 - prośby**
-- [ ] Polecenie dodające prośbę, sprawdzenie osoby na liście
-- [ ] Przebieg: Tak, Później, Nie chcę; zwrotka do autora
+**Etap 5 - poczta przychodząca** (zamiast próśb przez SSH, decyzja 2026-11-14; układ powiadomień 2026-11-15)
+- [x] Układ docelowy powiadomień i korespondencji (wyżej, „Powiadomienia i korespondencja w całym AP”)
+- [ ] Szczegóły do ustalenia (wyżej, „Poczta przychodząca”)
+- [ ] Odczyt maili (IMAP), wątki, sprawdzenie nadawcy, obcięcie cytatów
+- [ ] WIADOMOŚCI (osoba → tematy → wiadomości), ogłoszenie przy wejściu i w trakcie rozmowy, odpowiedź przez przebieg z etapu 4
+- [ ] `POST /v1/kompan/powiadomienia` i drugie źródło w `Notifier` (AP)
 
 **Etap 6 - wyszukiwanie w internecie** (jak najszybciej po etapach 1-5)
 - [ ] Sprawdzanie bieżących informacji; treść ze stron to dane, nie polecenia
 
 **Etap 7 - Wicero** (zależy od etapu czatu w Wicero)
-- [ ] Prośby od kontaktów, wiadomości i odpowiedzi odbiorców przez Wicero
+- [ ] Prośby od kontaktów, wiadomości i odpowiedzi odbiorców przez Wicero - kanał preferowany w tej samej korespondencji co mail
+
+**Później - most film ↔ Kompan**
+- [ ] Kompan wie o nowych filmach, proponuje obejrzenie, otwiera odtwarzacz Wicero i wraca do rozmowy
 
 **Uruchomienie (Ty)**
 - [x] Klucz API `ap-kompan` w `.env.kompan` na komputerze z AP (wzór: `.env.kompan.example`) - 2026-11-14
 - [ ] Konto Gmail i hasło aplikacji w `.env` (przed etapem 4)
-- [ ] Dostęp SSH do komputera z AP (przed etapem 5)
+- [ ] Dostęp SSH do komputera z AP - już niepotrzebny dla próśb (mail), przyda się do zdalnej pomocy
 - [ ] Lista osób i notatki startowe
 - [ ] Nagranie `sounds/kompan.ogg` (do tego czasu głos AP)
 
@@ -180,7 +232,9 @@ Czy rozmowa będzie dobra na tyle, żeby użytkownik chciał do niej wracać. Dl
 
 - [ ] Samodzielne pisanie skanowaniem („Napiszę sam”) - na razie nie ma sensu
 - [ ] Kopia notatek i rozmów poza laptopem - do przeanalizowania (kopia przez SSH to jedna z opcji, są lepsze)
-- [ ] Mail jako awaryjna droga odpowiedzi dla osób bez Wicero
+- [x] Mail jako droga odpowiedzi dla osób bez Wicero - wchodzi do etapu 5 (2026-11-14)
+- [ ] Zdjęcia z maili na ekranie AP (później; razem z mostem film ↔ Kompan)
+- [ ] Przycisk STREŚĆ przy bardzo długich mailach (AI, wyraźnie jako streszczenie) - bardzo daleko, na razie nie ma takich maili
 - [ ] Osobny moduł bezpieczeństwa (wzywanie pomocy) - możliwy, ale poza kompetencjami Kompana
 - [ ] Jeśli Kompan wyjdzie poza użytek wewnętrzny: mówić użytkownikom, że rozmowy są zapisywane, kto może je czytać i że przechodzą przez dostawcę AI; sprawdzić stronę prawną (dane o zdrowiu, RODO)
 - [ ] Przeniesienie kafelka do menu głównego, jeśli Kompan będzie często używany
