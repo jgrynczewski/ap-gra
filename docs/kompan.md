@@ -1,6 +1,6 @@
 # Kompan: rozmowa z AI w AP
 
-**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1 i 2 gotowy (bez prawdziwego AI), następny krok: pierwszy test ręczny na komputerze z AP. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
+**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09, bez prawdziwego AI), następny krok: pierwszy test ręczny na komputerze z AP. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
 
@@ -34,6 +34,13 @@ Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), 
 - Dostęp: użytkownik (CO O MNIE WIESZ: czyta i usuwa) i osoba techniczna (plik na komputerze). Nikt inny
 - Dane startowe wpisywane raz ręcznie, na podstawie `user_info.json` ze starego Kompana: dowolny czytelny tekst w `dane-kompan/notatki_startowe.txt`
 - Przed każdą zmianą notatek zostaje poprzednia wersja
+
+Szczegóły przyjęte przy kodzie (2026-11-09, do zmiany po testach):
+- Wpis ma najwyżej 80 znaków i jest pisany tak, jakby Kompan mówił do użytkownika („Kibicujesz Legii.”). W jednej odpowiedzi najwyżej 3 wpisy, a powtórki tego, co już jest, kod pomija
+- Moment przeglądu wybiera AI. Kod pokazuje przegląd tylko wtedy, gdy czeka co najmniej 5 wpisów i AI uzna, że to dobra chwila. Co odpowiedź AI słyszy, ile wpisów czeka
+- Przegląd pokazuje najwyżej 5 najstarszych wpisów. „Coś jest źle” prowadzi przez wpisy po kolei: **Dobrze**, **To nieprawda, usuń**, **Reszta jest dobra**. „Nie teraz” odkłada przegląd o 2 godziny. Przegląd nie pyta AI, więc nic nie kosztuje
+- Usunięty wpis trafia na listę „to nieprawda” (ostatnie 20), którą AI dostaje razem z notatkami, żeby nie zapisało go ponownie
+- CO O MNIE WIESZ czyta wpisy po jednym: **Dalej**, **To nieprawda, usuń**, **Wystarczy**. Przy niepotwierdzonym przypuszczeniu dodaje „To moje przypuszczenie.”. Notatek startowych tu nie ma, bo zmienia je tylko osoba techniczna
 
 ### Prośby od innych osób
 
@@ -93,9 +100,9 @@ dane-kompan/
   streszczenie.json     skrót wcześniejszych rozmów
   koszty.jsonl          koszt każdej odpowiedzi AI, liczony z tokenów
   nagrania/             nagrania narratora
+  notatki.json          wpisy: tekst, skąd wiadomo, data, czy potwierdzony; lista „to nieprawda”
+  notatki-wersje/       poprzednie wersje notatek
 Dojdą:
-  notatki.json          (etap 3) wpisy: tekst, skąd wiadomo, data, czy potwierdzony
-  notatki-wersje/       (etap 3) poprzednie wersje
   osoby.json            (etap 4) imię, adres, czy może prosić, czy może dostawać wiadomości
   wiadomosci/<id>.json  (etap 4) kolejka wysyłki
   prosby/<id>.json      (etap 5) od kogo, treść, stan, liczba odłożeń
@@ -119,9 +126,10 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [ ] Sprawdzić, czy 4 odpowiedzi i 5 przycisków na dole mieszczą się na ekranie i czy skanowanie nie jest za długie
 - [ ] **Pierwszy test ręczny: czy to się dobrze rozmawia.** Główna niewiadoma, więc zanim zbudujemy resztę
 
-**Etap 3 - pamięć**
-- [ ] Zapisywanie przez AI, źródło wpisu, poprzednie wersje
-- [ ] Okresowy przegląd i przycisk CO O MNIE WIESZ na ekranie wejścia
+**Etap 3 - pamięć** (kod gotowy 2026-11-09; testy z udawanym AI, w tym klient z Pythona 2.7 przeciw prawdziwemu serwerowi). Zbudowany przed testem K4 na prośbę użytkownika, żeby nie czekać; jeśli K4 pokaże, że rozmowa wymaga zmian, poprawimy głównie prompt
+- [x] Zapisywanie przez AI, źródło wpisu, poprzednie wersje
+- [x] Okresowy przegląd i przycisk CO O MNIE WIESZ na ekranie wejścia
+- [ ] Test K6 na komputerze z AP
 
 **Etap 4 - wiadomości**
 - [ ] `osoby.json`, przebieg wyboru osób i zatwierdzania

@@ -27,6 +27,7 @@ from kreator.ai import AI, AIError
 from kreator.rozmowa import audio_of, new_id
 
 from .koszty import Costs
+from .notatki import GUESS, MAX_NEW, NOTE_CHARS, REVIEW_MAX, USER, Notes
 
 PROMPT = (Path(__file__).parent / "prompty" / "rozmowa.md").read_text(encoding="utf-8")
 SUMMARY_PROMPT = (Path(__file__).parent / "prompty" / "streszczenie.md").read_text(encoding="utf-8")
@@ -37,8 +38,16 @@ SCHEMA = {
         "wypowiedz": {"type": "string"},
         "opcje": {"type": "array", "items": {"type": "string"}},
         "tytul_rozmowy": {"type": "string"},
+        # New entries of the notes (docs/kompan.md -> Pamięć); usually none
+        "zapamietaj": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"tekst": {"type": "string"}, "skad": {"type": "string", "enum": [USER, GUESS]}},
+            "required": ["tekst", "skad"],
+            "additionalProperties": False}},
+        # A good moment to show the review of new entries
+        "pora_na_przeglad": {"type": "boolean"},
     },
-    "required": ["wypowiedz", "opcje", "tytul_rozmowy"],
+    "required": ["wypowiedz", "opcje", "tytul_rozmowy", "zapamietaj", "pora_na_przeglad"],
     "additionalProperties": False,
 }
 SUMMARY_SCHEMA = {
@@ -71,10 +80,31 @@ FIXED = [BLISKO, INNE_PROPOZYCJE, ZMIEN_TEMAT]
 START = "Zacznij nową rozmowę."
 CONTINUED = "Wcześniejsza część tej rozmowy jest w streszczeniu."
 CHOICE = "Wybór: "
+WAITING = " (Wpisów czekających na przegląd: {})"
+
+# The review of new entries: screens made by the code, no AI
+REVIEW_LIST = "Przy okazji, zapamiętałem:"
+REVIEW_ASK = "Zgadza się?"
+REVIEW_ONE = "Zapamiętałem: "
+ALL_GOOD, SOMETHING_WRONG, NOT_NOW = "Wszystko dobrze", "Coś jest źle", "Nie teraz"
+GOOD, WRONG, REST_GOOD = "Dobrze", "To nieprawda, usuń", "Reszta jest dobra"
 
 RETURN_LABEL = "Wróć do rozmowy: "
 # Fixed texts of the boards in AP, read in the narrator's voice
 INTERFACE = {
+    "co_o_mnie_wiesz": "Co o mnie wiesz",
+    "dalej": "Dalej",
+    "usun": WRONG,
+    "wystarczy": "Wystarczy",
+    "przypuszczenie": "To moje przypuszczenie.",
+    "koniec_notatek": "To wszystko, co zapamiętałem.",
+    "brak_notatek": "Jeszcze nic o Tobie nie zapamiętałem.",
+    "usunalem": "Usunąłem.",
+    "wszystko_dobrze": ALL_GOOD,
+    "cos_jest_zle": SOMETHING_WRONG,
+    "nie_teraz": NOT_NOW,
+    "dobrze": GOOD,
+    "reszta_dobra": REST_GOOD,
     "kompan": "Kompan",
     "wroc_do_rozmowy": "Wróć do rozmowy",
     "nowa_rozmowa": "Nowa rozmowa",
@@ -94,6 +124,7 @@ MYSLI = "mysli"  # the AI is working; AP shows "Myślę..." and asks again
 PYTANIE = "pytanie"
 BLAD = "blad"  # the AI failed; WRÓĆ shows the last question, coming back tries again
 LIMIT = "limit"  # the daily cost limit; coming back the next day tries again
+PRZEGLAD = "przeglad"  # the review of new entries, before the AI's question
 
 ZONE = ZoneInfo("Europe/Warsaw")
 DAYS = ("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")
@@ -131,7 +162,22 @@ def problems(answer: dict) -> list[str]:
         found.append("odpowiedzi się powtarzają")
     if not 1 <= len(answer["tytul_rozmowy"].strip()) <= TITLE_CHARS:
         found.append(f"tytuł rozmowy musi mieć od 1 do {TITLE_CHARS} znaków")
+    notes = answer.get("zapamietaj", [])
+    if len(notes) > MAX_NEW:
+        found.append(f"najwyżej {MAX_NEW} wpisy w polu zapamietaj")
+    for note in notes:
+        if not 1 <= len(note["tekst"].strip()) <= NOTE_CHARS:
+            found.append(f"wpis {note['tekst']!r} musi mieć od 1 do {NOTE_CHARS} znaków")
     return found
+
+
+def review_text(texts: list[str]) -> str:
+    return "\n".join([REVIEW_LIST, *texts]) + "\n\n" + REVIEW_ASK
+
+
+def review_texts(texts: list[str]) -> list[str]:
+    """Everything a review of these entries can show - recorded before it is shown."""
+    return [review_text(texts), *(REVIEW_ONE + text for text in texts)]
 
 
 def _thread(work: Callable[[], None]) -> None:
@@ -156,6 +202,7 @@ class Kompan:
         self.run = run
         self.costs = costs or Costs(data / "koszty.jsonl", limit)
         self.ai.on_usage = self.costs.add
+        self.notes = Notes(data)
         self.conversations_dir = data / "rozmowy"
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self._conversations: dict[str, Conversation] = {}
@@ -164,7 +211,7 @@ class Kompan:
 
     # --- what the AI knows ------------------------------------------------
 
-    def notes(self) -> str:
+    def start_notes(self) -> str:
         """Start notes, written once by hand from anything readable (docs/kompan.md)."""
         path = self.data / "notatki_startowe.txt"
         return path.read_text(encoding="utf-8").strip() if path.is_file() else ""
@@ -174,7 +221,10 @@ class Kompan:
         return json.loads(path.read_text(encoding="utf-8"))["tekst"] if path.is_file() else ""
 
     def system(self) -> list[dict]:
-        known = (f"## Co wiesz o tej osobie\n\n{self.notes() or 'Jeszcze nic.'}\n\n"
+        start = self.start_notes()
+        known = ("## Co wiesz o tej osobie\n\n"
+                 + (f"Notatki startowe:\n{start}\n\n" if start else "")
+                 + f"Twoje notatki (pole zapamietaj):\n{self.notes.for_ai()}\n\n"
                  f"## Streszczenie wcześniejszych rozmów\n\n{self.summary() or 'To Wasza pierwsza rozmowa.'}")
         # The cache ends here: the rules and what is known change rarely
         return [{"type": "text", "text": PROMPT},
@@ -251,6 +301,8 @@ class Conversation:
         self.status = MYSLI
         self.opening = ""  # the first message to the AI
         self.folded = 0  # this many first steps are already in the summary
+        # The review in progress: {"wpisy": [ids], "etap": "lista" | "wpis", "i": entry shown}
+        self.review: dict | None = None
         self._generation = 0  # bumped by WRÓĆ - older AI answers are dropped
         self._working: int | None = None  # the generation an AI work runs for
         state = directory / "stan.json"
@@ -258,6 +310,7 @@ class Conversation:
             saved = json.loads(state.read_text(encoding="utf-8"))
             self.steps, self.status = saved["kroki"], saved["status"]
             self.opening, self.folded = saved["otwarcie"], saved["streszczone"]
+            self.review = saved.get("przeglad")
 
     # --- the AI in the background ---------------------------------------
 
@@ -300,7 +353,12 @@ class Conversation:
             if upto:
                 self.kompan.fold(self, upto)
             answer = self._valid_answer()
-            self._record(answer)
+            notes = self.kompan.notes
+            new = notes.new_texts(answer["zapamietaj"])
+            # What a review would show if it starts now (the oldest waiting entries)
+            reviewed = ([e["tekst"] for e in notes.pending()] + new)[:REVIEW_MAX]
+            self._record([answer["wypowiedz"], *answer["opcje"], RETURN_LABEL + answer["tytul_rozmowy"], *new,
+                          *(review_texts(reviewed) if answer["pora_na_przeglad"] else [])])
         except AIError as error:
             with self._lock:
                 if generation == self._generation:
@@ -317,9 +375,16 @@ class Conversation:
                 self.log.write("odpowiedz_ai_pominieta", powod="użytkownik wrócił")
                 return
             self.steps.append({"ai": answer, "wybor": None})
+            added = notes.add(answer["zapamietaj"], self.id)
+            if added:
+                self.log.write("zapamietane", wpisy=added)
             self.status = PYTANIE
-            self.log.write("pokazane", tekst=answer["wypowiedz"], opcje=self._options(),
-                           tytul=answer["tytul_rozmowy"])
+            if answer["pora_na_przeglad"] and notes.review_due():
+                entries = notes.pending()[:REVIEW_MAX]
+                self.review = {"wpisy": [e["id"] for e in entries], "etap": "lista", "i": 0}
+                self.status = PRZEGLAD
+                self.log.write("przeglad_start", wpisy=entries)
+            self._shown()
             self._save()
 
     def _valid_answer(self) -> dict:
@@ -331,20 +396,23 @@ class Conversation:
             if not found:
                 return {"wypowiedz": answer["wypowiedz"].strip(),
                         "opcje": [o.strip() for o in answer["opcje"]],
-                        "tytul_rozmowy": answer["tytul_rozmowy"].strip()}
+                        "tytul_rozmowy": answer["tytul_rozmowy"].strip(),
+                        "zapamietaj": [{"tekst": n["tekst"].strip(), "skad": n["skad"]}
+                                       for n in answer.get("zapamietaj", [])],
+                        "pora_na_przeglad": bool(answer.get("pora_na_przeglad"))}
             self.log.write("odpowiedz_ai_odrzucona", proba=attempt, problemy=found)
             messages = messages + [
                 {"role": "assistant", "content": json.dumps(answer, ensure_ascii=False)},
                 {"role": "user", "content": "Popraw: " + "; ".join(found)}]
         raise AIError(f"odpowiedź AI łamie zasady po {ATTEMPTS} próbach")
 
-    def _record(self, answer: dict) -> None:
+    def _record(self, texts: list[str]) -> None:
         """Recordings of the new texts before AP shows them; a failure only
         means no recording (AP reads with its own voice then)."""
         narrator = self.kompan.narrator
         if not narrator:
             return
-        for text in [answer["wypowiedz"], *answer["opcje"], RETURN_LABEL + answer["tytul_rozmowy"]]:
+        for text in texts:
             try:
                 narrator.recording(text)
             except Exception as error:  # noqa: BLE001
@@ -386,15 +454,68 @@ class Conversation:
     def answer(self, number: int) -> None:
         with self._lock:
             options = self._options()
-            if self.status != PYTANIE:
+            if self.status not in (PYTANIE, PRZEGLAD):
                 raise ConversationError(f"Teraz nie można odpowiadać (stan: {self.status}).")
             if not 1 <= number <= len(options):
                 raise ConversationError(f"Nie ma opcji {number}.")
             chosen = options[number - 1]
             self.log.write("odpowiedz_uzytkownika", numer=number, tekst=chosen)
+            if self.status == PRZEGLAD:
+                self._review_answer(chosen)
+                return
             message = chosen if chosen in FIXED else CHOICE + chosen
+            if self.kompan.notes.review_due():
+                message += WAITING.format(len(self.kompan.notes.pending()))
             self.steps[-1]["wybor"] = f"{stamp()} {message}"
             self._ask()
+
+    # --- the review of new entries (no AI) --------------------------------
+
+    def _review_entries(self) -> list[dict]:
+        return self.kompan.notes.get(self.review["wpisy"])
+
+    def _review_screen(self) -> tuple[str, list[str]]:
+        entries = self._review_entries()
+        if self.review["etap"] == "lista":
+            return review_text([e["tekst"] for e in entries]), [ALL_GOOD, SOMETHING_WRONG, NOT_NOW]
+        i = self.review["i"]
+        last = i == len(self.review["wpisy"]) - 1
+        text = REVIEW_ONE + entries[i]["tekst"] if i < len(entries) else ""
+        return text, [GOOD, WRONG] + ([] if last else [REST_GOOD])
+
+    def _review_answer(self, chosen: str) -> None:
+        notes = self.kompan.notes
+        ids = self.review["wpisy"]
+        i = self.review["i"]
+        done = True
+        if chosen == ALL_GOOD:
+            notes.confirm(ids)
+        elif chosen == NOT_NOW:
+            notes.postpone()
+        elif chosen == SOMETHING_WRONG:
+            self.review["etap"] = "wpis"
+            done = False
+        elif chosen == REST_GOOD:
+            notes.confirm(ids[i:])
+        else:
+            if chosen == GOOD:
+                notes.confirm([ids[i]])
+            else:  # WRONG
+                removed = notes.remove(ids[i])
+                self.log.write("wpis_usuniety", wpis=removed)
+                ids = self.review["wpisy"] = ids[:i] + ids[i + 1:]
+                i -= 1
+            self.review["i"] = i + 1
+            done = self.review["i"] >= len(ids)
+        if done or not self._review_entries():
+            self.review = None
+            self.status = PYTANIE
+            self.log.write("przeglad_koniec")
+        self._shown()
+        self._save()
+
+    def _shown(self) -> None:
+        self.log.write("pokazane", tekst=self._text(), opcje=self._options(), tytul=self.title())
 
     def back(self) -> None:
         """WRÓĆ: the question before the current one (or, while the AI works
@@ -425,6 +546,8 @@ class Conversation:
             self.log.write("wyjscie", status=self.status)
 
     def can_go_back(self) -> bool:
+        if self.status == PRZEGLAD:
+            return False
         active = len(self.steps) - self.folded
         return active >= 2 if self.status == PYTANIE else active >= 1
 
@@ -434,13 +557,17 @@ class Conversation:
         return self.steps[-1]["ai"]["tytul_rozmowy"] if self.steps else ""
 
     def _text(self) -> str:
+        if self.status == PRZEGLAD:
+            return self._review_screen()[0]
         return self.steps[-1]["ai"]["wypowiedz"] if self.status == PYTANIE else ""
 
     def _answers(self) -> list[str]:
+        if self.status == PRZEGLAD:
+            return self._review_screen()[1]
         return self.steps[-1]["ai"]["opcje"] if self.status == PYTANIE else []
 
     def _options(self) -> list[str]:
-        return [*self._answers(), *FIXED] if self.status == PYTANIE else []
+        return [*self._answers(), *(FIXED if self.status == PYTANIE else [])]
 
     def _audio(self, text: str) -> dict | None:
         return audio_of(self.kompan.narrator, text, self.kompan.audio_url)
@@ -467,4 +594,4 @@ class Conversation:
     def _save(self) -> None:
         _write_json(self.directory / "stan.json", {
             "id": self.id, "status": self.status, "otwarcie": self.opening,
-            "streszczone": self.folded, "kroki": self.steps})
+            "streszczone": self.folded, "przeglad": self.review, "kroki": self.steps})

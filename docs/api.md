@@ -134,21 +134,23 @@ Osobna usługa z tego samego obrazu ([`kompan.md`](kompan.md)), z własnym klucz
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu |
+| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia", "notatki"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu; `notatki`: liczba wpisów |
 | `POST /v1/kompan/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`) |
 | `GET /v1/kompan/rozmowy/<id>` | - | stan rozmowy |
 | `POST /v1/kompan/rozmowy/<id>/odpowiedz` | `{"opcja": 2}` | stan (zwykle `mysli`) |
 | `POST /v1/kompan/rozmowy/<id>/wroc` | - | poprzednie pytanie, bez pytania AI |
 | `POST /v1/kompan/rozmowy/<id>/powrot` | - | WRÓĆ DO ROZMOWY: stan; po błędzie, limicie albo restarcie pyta AI ponownie |
 | `POST /v1/kompan/rozmowy/<id>/wyjscie` | - | ZAKOŃCZ: zapis w logu, rozmowa zostaje bez zmian |
+| `GET /v1/kompan/notatki` | - | CO O MNIE WIESZ: `{"wpisy": [{"id", "tekst", "przypuszczenie", "audio"}]}`, od najstarszego; bez notatek startowych |
+| `POST /v1/kompan/notatki/<id>/usun` | - | „To nieprawda, usuń”: lista jak wyżej; nieznany wpis → 404 |
 | `GET /v1/kompan/audio/<nazwa>.wav` | - | nagranie (adres ze stanu) |
 
 Stan: `{"id", "status", "tekst", "audio", "opcje": [...], "stale": [...], "mozna_wrocic", "tytul"}`. `opcje` to odpowiedzi od AI (2-4), `stale` to Blisko, Inne propozycje, Zmień temat; każdy przycisk to `{"numer", "tekst", "audio"}`, z jedną numeracją dla `/odpowiedz`.
 
-- `status`: `mysli`, `pytanie`, `blad` (AI zawiodło), `limit` (przekroczony dzienny limit kosztów).
+- `status`: `mysli`, `pytanie`, `przeglad` (przegląd nowych wpisów przed pytaniem AI: same `opcje`, `stale` puste, bez WRÓĆ; odpowiedzi nie pytają AI), `blad` (AI zawiodło), `limit` (przekroczony dzienny limit kosztów).
 - Odpowiedź lub WRÓĆ niepasujące do stanu → 409 `{"error"}`; nieznana rozmowa → 404.
 - Rozmowy są na dysku i przeżywają restart usługi. Historia: `dane-kompan/rozmowy/<id>/log.jsonl` - każde zapytanie do AI, każda odpowiedź, każde pytanie z wszystkimi opcjami, każdy wybór. Koszty: `dane-kompan/koszty.jsonl`.
-- Ustawienia w `.env.kompan`: `AP_KOMPAN_MODEL`, `AP_KOMPAN_EFFORT`, `AP_KOMPAN_LIMIT_USD`. Notatki startowe: zwykły tekst w `dane-kompan/notatki_startowe.txt`.
+- Ustawienia w `.env.kompan`: `AP_KOMPAN_MODEL`, `AP_KOMPAN_EFFORT`, `AP_KOMPAN_LIMIT_USD`. Notatki startowe: zwykły tekst w `dane-kompan/notatki_startowe.txt`. Wpisy zapisane przez AI: `dane-kompan/notatki.json`, poprzednie wersje w `dane-kompan/notatki-wersje/`.
 
 ## Uruchomienie
 

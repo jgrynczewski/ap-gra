@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from kreator.ai import AI, configured
 from kreator.rozmowa import audio_of
 
+from .notatki import GUESS
 from .rozmowa import INTERFACE, RETURN_LABEL, ConversationError, Conversation, Kompan
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,6 +34,7 @@ LIMIT_USD = float(os.environ.get("AP_KOMPAN_LIMIT_USD", "5"))
 AUDIO_URL = "/v1/kompan/audio"
 RECORDING = re.compile(r"[0-9a-f]+\.wav")
 CONVERSATION_ID = re.compile(r"[0-9a-z-]+")
+NOTE_ID = re.compile(r"[0-9a-f]+")
 
 
 def _narrator():
@@ -102,7 +104,29 @@ def health() -> dict:
                           for name, text in INTERFACE.items()},
             # What WRÓĆ DO ROZMOWY goes back to; null - the first visit
             "ostatnia": {"id": latest.id, "tytul": latest.title(), "etykieta": label,
-                         "audio": audio_of(narrator, label, AUDIO_URL)} if latest else None}
+                         "audio": audio_of(narrator, label, AUDIO_URL)} if latest else None,
+            "notatki": len(kompan.notes.entries())}
+
+
+def _notes() -> dict:
+    """CO O MNIE WIESZ: the entries saved by the AI (not the start notes), oldest first."""
+    kompan = app.state.kompan
+    return {"wpisy": [{"id": e["id"], "tekst": e["tekst"],
+                       "przypuszczenie": e["skad"] == GUESS and not e["potwierdzony"],
+                       "audio": audio_of(kompan.narrator, e["tekst"], AUDIO_URL)}
+                      for e in kompan.notes.entries()]}
+
+
+@app.get("/v1/kompan/notatki")
+def notes() -> dict:
+    return _notes()
+
+
+@app.post("/v1/kompan/notatki/{nid}/usun")
+def remove_note(nid: str) -> dict:
+    if not (NOTE_ID.fullmatch(nid) and app.state.kompan.notes.remove(nid)):
+        raise NotFound(f"Nie ma wpisu {nid!r}.")
+    return _notes()
 
 
 @app.post("/v1/kompan/rozmowy")

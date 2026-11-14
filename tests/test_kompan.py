@@ -16,11 +16,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 os.environ["AP_KOMPAN_DATA"] = tempfile.mkdtemp()
 
-from engine.log import Log  # noqa: E402
 from kompan.koszty import Costs, cost  # noqa: E402
-from kompan.rozmowa import (BLAD, BLISKO, FIXED, INNE_PROPOZYCJE, LIMIT, MYSLI, PYTANIE,  # noqa: E402
-                            WINDOW_KEEP, WINDOW_MAX, ZMIEN_TEMAT, ConversationError, Kompan,
-                            problems, stamp)
+from kompan.notatki import GUESS, POSTPONE, REVIEW_AT, USER  # noqa: E402
+from kompan.rozmowa import (ALL_GOOD, BLAD, BLISKO, FIXED, GOOD, INNE_PROPOZYCJE, LIMIT, MYSLI,  # noqa: E402
+                            NOT_NOW, PRZEGLAD, PYTANIE, REST_GOOD, SOMETHING_WRONG, WINDOW_KEEP,
+                            WINDOW_MAX, WRONG, ZMIEN_TEMAT, ConversationError, Kompan, problems,
+                            review_text, stamp)
 from kreator.ai import AI  # noqa: E402
 from test_kreator import FakeClient, response  # noqa: E402
 
@@ -32,8 +33,9 @@ except ImportError:
     TestClient = None
 
 
-def said(text, *options, title="Mecz"):
-    return {"wypowiedz": text, "opcje": list(options), "tytul_rozmowy": title}
+def said(text, *options, title="Mecz", notes=(), review=False):
+    return {"wypowiedz": text, "opcje": list(options), "tytul_rozmowy": title,
+            "zapamietaj": [{"tekst": t, "skad": s} for t, s in notes], "pora_na_przeglad": review}
 
 
 A1 = said("Cześć. Oglądałeś wczoraj mecz?", "Tak, cały", "Tylko końcówkę", "Nie")
@@ -173,6 +175,9 @@ class ProblemsTest(unittest.TestCase):
             said("Co?", "A", "y" * 61),
             said("Co?", "A", "Zmień temat"),
             said("Co?", "A", "B", title=""),
+            said("Co?", "A", "B", notes=[("x", USER)] * 4),
+            said("Co?", "A", "B", notes=[("x" * 81, USER)]),
+            said("Co?", "A", "B", notes=[(" ", GUESS)]),
         ]
         for case in cases:
             self.assertTrue(problems(case), case)
@@ -298,6 +303,148 @@ class RestartTest(unittest.TestCase):
         self.assertIsNone(kompan.latest())
 
 
+FIVE = [(f"Wpis {n}.", GUESS if n % 2 else USER) for n in range(1, 6)]
+
+
+class Recorder:
+    """A narrator that only notes what it was asked to record."""
+
+    def __init__(self):
+        self.cache = Path(tempfile.mkdtemp())
+        self.texts = []
+
+    def recording(self, text):
+        self.texts.append(text)
+        return self.cache / "x.wav"
+
+
+class MemoryTest(unittest.TestCase):
+    def review(self, *after, narrator=None):
+        """Five new entries (three from earlier, two now) and the AI saying it is a good moment."""
+        kompan, client = make(said("A co u Ciebie?", "Dobrze", "Źle", notes=FIVE[3:], review=True), *after,
+                              narrator=narrator)
+        kompan.notes.add([{"tekst": t, "skad": s} for t, s in FIVE[:3]], "wczesniej")
+        return kompan, client, kompan.new()
+
+    def test_entries_are_saved_with_their_source(self):
+        kompan, client = make(said("Legia?", "Tak", "Nie", notes=[("Kibicujesz Legii.", USER),
+                                                                  ("Masz brata.", GUESS)]), A2)
+        conversation = kompan.new()
+        entries = kompan.notes.entries()
+        self.assertEqual([(e["tekst"], e["skad"]) for e in entries],
+                         [("Kibicujesz Legii.", USER), ("Masz brata.", GUESS)])
+        self.assertEqual(entries[0]["rozmowa"], conversation.id)
+        self.assertIn("zapamietane", kinds(conversation))
+        conversation.answer(1)
+        known = client.calls[1]["system"][1]["text"]
+        self.assertIn("- Kibicujesz Legii.\n", known)
+        self.assertIn("- Masz brata. (przypuszczenie)", known)
+
+    def test_repeats_are_not_saved_and_versions_are_kept(self):
+        kompan, _ = make(said("A?", "B", "C", notes=[("Kibicujesz Legii.", USER)]),
+                         said("A?", "B", "C", notes=[("kibicujesz legii.", GUESS), ("Masz psa.", USER)]))
+        conversation = kompan.new()
+        conversation.answer(1)
+        self.assertEqual([e["tekst"] for e in kompan.notes.entries()], ["Kibicujesz Legii.", "Masz psa."])
+        self.assertEqual(len(list((kompan.data / "notatki-wersje").iterdir())), 1)
+
+    def test_the_ai_hears_when_entries_wait(self):
+        kompan, client, conversation = self.review(A2, A3)
+        conversation.answer(3)  # Nie teraz
+        conversation.answer(1)
+        self.assertNotIn("przegląd", client.calls[1]["messages"][-1]["content"][0]["text"])
+        kompan.notes.now = lambda: datetime.now(timezone.utc) + POSTPONE
+        conversation.answer(1)
+        self.assertTrue(client.calls[2]["messages"][-1]["content"][0]["text"].endswith(
+            f"(Wpisów czekających na przegląd: {REVIEW_AT})"))
+
+    def test_review_needs_the_ai_and_enough_entries(self):
+        kompan, _ = make(said("A?", "B", "C", notes=FIVE[:3], review=True))
+        self.assertEqual(kompan.new().status, PYTANIE)  # 3 entries
+        kompan, _ = make(said("A?", "B", "C", notes=FIVE[3:]))
+        kompan.notes.add([{"tekst": t, "skad": s} for t, s in FIVE[:3]], "wczesniej")
+        self.assertEqual(kompan.new().status, PYTANIE)  # the AI did not say it is a good moment
+
+    def test_review_all_good(self):
+        kompan, client, conversation = self.review()
+        view = conversation.view()
+        self.assertEqual(view["status"], PRZEGLAD)
+        self.assertEqual(view["tekst"], review_text([t for t, _ in FIVE]))
+        self.assertEqual(texts(view["opcje"]), [ALL_GOOD, SOMETHING_WRONG, NOT_NOW])
+        self.assertEqual(view["stale"], [])
+        self.assertFalse(view["mozna_wrocic"])
+        with self.assertRaises(ConversationError):
+            conversation.back()
+        conversation.answer(1)
+        self.assertEqual(conversation.view()["tekst"], "A co u Ciebie?")
+        self.assertTrue(all(e["potwierdzony"] for e in kompan.notes.entries()))
+        self.assertEqual(len(client.calls), 1)  # the review never asks the AI
+        self.assertIn("przeglad_koniec", kinds(conversation))
+
+    def test_review_one_by_one(self):
+        kompan, _, conversation = self.review()
+        conversation.answer(2)  # Coś jest źle
+        view = conversation.view()
+        self.assertEqual(view["tekst"], "Zapamiętałem: Wpis 1.")
+        self.assertEqual(texts(view["opcje"]), [GOOD, WRONG, REST_GOOD])
+        conversation.answer(1)  # Dobrze
+        conversation.answer(2)  # To nieprawda, usuń - Wpis 2
+        self.assertEqual(conversation.view()["tekst"], "Zapamiętałem: Wpis 3.")
+        conversation.answer(3)  # Reszta jest dobra
+        self.assertEqual(conversation.status, PYTANIE)
+        entries = kompan.notes.entries()
+        self.assertEqual([e["tekst"] for e in entries], ["Wpis 1.", "Wpis 3.", "Wpis 4.", "Wpis 5."])
+        self.assertTrue(all(e["potwierdzony"] for e in entries))
+        self.assertIn("Wpis 2.", kompan.notes.for_ai().split("nieprawda")[1])
+        self.assertIn("wpis_usuniety", kinds(conversation))
+
+    def test_review_last_entry_and_removing_it(self):
+        kompan, _, conversation = self.review()
+        conversation.answer(2)
+        for _ in range(4):
+            conversation.answer(1)
+        view = conversation.view()
+        self.assertEqual(view["tekst"], "Zapamiętałem: Wpis 5.")
+        self.assertEqual(texts(view["opcje"]), [GOOD, WRONG])  # nothing left after it
+        conversation.answer(2)
+        self.assertEqual(conversation.status, PYTANIE)
+        self.assertEqual(len(kompan.notes.entries()), 4)
+
+    def test_not_now_waits(self):
+        kompan, _, conversation = self.review()
+        conversation.answer(3)
+        self.assertEqual(conversation.status, PYTANIE)
+        self.assertFalse(kompan.notes.review_due())
+        kompan.notes.now = lambda: datetime.now(timezone.utc) + POSTPONE
+        self.assertTrue(kompan.notes.review_due())
+
+    def test_review_is_recorded_before_it_is_shown(self):
+        kompan, _, conversation = self.review(narrator=Recorder())
+        self.assertEqual(conversation.status, PRZEGLAD)
+        recorded = kompan.narrator.texts
+        self.assertIn(review_text([t for t, _ in FIVE]), recorded)
+        self.assertIn("Zapamiętałem: Wpis 3.", recorded)
+        self.assertIn("Wpis 5.", recorded)  # for CO O MNIE WIESZ
+
+    def test_review_survives_a_restart(self):
+        kompan, _, conversation = self.review()
+        conversation.answer(2)
+        again, _ = make(data=kompan.data)
+        found = again.get(conversation.id)
+        self.assertEqual(found.view()["tekst"], "Zapamiętałem: Wpis 1.")
+
+    def test_dropped_answer_saves_nothing(self):
+        kompan, client = make(A1, said("A?", "B", "C", notes=[("Masz psa.", USER)]))
+        works = []
+        kompan.run = works.append
+        conversation = kompan.new()
+        works.pop()()
+        conversation.answer(1)
+        conversation.back()
+        works.pop()()
+        self.assertEqual(kompan.notes.entries(), [])
+
+
 USAGE = SimpleNamespace(input_tokens=1000, output_tokens=500, cache_creation_input_tokens=2000,
                         cache_read_input_tokens=10000)
 
@@ -333,7 +480,9 @@ class CostsTest(unittest.TestCase):
         self.assertEqual(conversation.view()["tekst"], A1["wypowiedz"])
 
     def test_limit_resets_the_next_day(self):
-        today = [datetime(2026, 11, 8, 20, 0, tzinfo=timezone.utc)]
+        # The log has the real time of an entry, so "today" is the real day
+        start = datetime.now(timezone.utc)
+        today = [start]
         kompan, _ = make(A1, A2, limit=0.001, now=lambda: today[0])
         conversation = kompan.new()
         conversation.answer(1)
@@ -341,13 +490,6 @@ class CostsTest(unittest.TestCase):
         conversation.come_back()  # still today
         self.assertEqual(conversation.status, LIMIT)
         today[0] += timedelta(days=1)
-        # The log has the real time of the entry, so count it as "yesterday"
-        lines = kompan.costs.log.entries()
-        kompan.costs.log.path.unlink()
-        log = Log(kompan.costs.log.path)
-        for line in lines:
-            with open(log.path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({**line, "czas": "2026-11-08T20:00:00+00:00"}) + "\n")
         conversation.come_back()
         self.assertEqual(conversation.view()["tekst"], A2["wypowiedz"])
 
@@ -388,6 +530,18 @@ class ApiTest(unittest.TestCase):
         latest = self.api.get("/v1/kompan/health").json()["ostatnia"]
         self.assertEqual(latest["id"], cid)
         self.assertEqual(latest["etykieta"], "Wróć do rozmowy: Mecz")
+
+    def test_notes(self):
+        self.kompan.notes.add([{"tekst": "Kibicujesz Legii.", "skad": USER},
+                               {"tekst": "Masz psa.", "skad": GUESS}], "c")
+        self.assertEqual(self.api.get("/v1/kompan/health").json()["notatki"], 2)
+        entries = self.api.get("/v1/kompan/notatki").json()["wpisy"]
+        self.assertEqual([(e["tekst"], e["przypuszczenie"]) for e in entries],
+                         [("Kibicujesz Legii.", False), ("Masz psa.", True)])
+        left = self.api.post(f"/v1/kompan/notatki/{entries[1]['id']}/usun").json()["wpisy"]
+        self.assertEqual([e["tekst"] for e in left], ["Kibicujesz Legii."])
+        self.assertEqual(self.api.post(f"/v1/kompan/notatki/{entries[1]['id']}/usun").status_code, 404)
+        self.assertEqual(self.api.post("/v1/kompan/notatki/..%2F/usun").status_code, 404)
 
     def test_errors(self):
         self.assertEqual(self.api.get("/v1/kompan/rozmowy/nie-ma").status_code, 404)

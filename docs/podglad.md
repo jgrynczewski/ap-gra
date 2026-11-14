@@ -69,6 +69,8 @@ curl -s localhost:8768/v1/kompan/health | python3 -m json.tool       # "ai": tru
 KLOG="$(ls -t ~/ap-gra/dane-kompan/rozmowy/*/log.jsonl | head -1)"   # ostatnio zapisywany log
 grep -E '"rodzaj": "(pokazane|odpowiedz_uzytkownika)"' "$KLOG" | cut -c1-500   # pytania, opcje i wybory
 tail -n 5 ~/ap-gra/dane-kompan/koszty.jsonl                          # koszt ostatnich odpowiedzi AI
+curl -s localhost:8768/v1/kompan/notatki | python3 -m json.tool      # co Kompan zapamiętał
+grep -E '"rodzaj": "(zapamietane|przeglad_start|wpis_usuniety)"' "$KLOG" | cut -c1-300   # zapisy i przeglądy
 docker logs --tail 30 ap-gra-kompan
 ```
 
