@@ -224,11 +224,21 @@ class Kompan:
         start = self.start_notes()
         known = ("## Co wiesz o tej osobie\n\n"
                  + (f"Notatki startowe:\n{start}\n\n" if start else "")
-                 + f"Twoje notatki (pole zapamietaj):\n{self.notes.for_ai()}\n\n"
+                 + "Twoje notatki (pole zapamietaj) są zawsze na końcu ostatniej wiadomości.\n\n"
                  f"## Streszczenie wcześniejszych rozmów\n\n{self.summary() or 'To Wasza pierwsza rozmowa.'}")
         # The cache ends here: the rules and what is known change rarely
         return [{"type": "text", "text": PROMPT},
                 {"type": "text", "text": known, "cache_control": {"type": "ephemeral"}}]
+
+    def with_notes(self, messages: list[dict]) -> list[dict]:
+        """The notes go after the last cache point: a new note then costs only
+        its own tokens, not a re-read of the whole conversation (in the system
+        prompt it broke the cache on every saved note)."""
+        last = messages[-1]
+        content = last["content"]
+        blocks = [{"type": "text", "text": content}] if isinstance(content, str) else list(content)
+        blocks.append({"type": "text", "text": f"Twoje notatki (pole zapamietaj):\n{self.notes.for_ai()}"})
+        return messages[:-1] + [{"role": last["role"], "content": blocks}]
 
     # --- conversations ----------------------------------------------------
 
@@ -391,7 +401,8 @@ class Conversation:
         with self._lock:
             messages = self._messages()
         for attempt in range(1, ATTEMPTS + 1):
-            answer = self.kompan.ai.ask(self.log, "rozmowa", self.kompan.system(), messages, SCHEMA)
+            answer = self.kompan.ai.ask(self.log, "rozmowa", self.kompan.system(),
+                                        self.kompan.with_notes(messages), SCHEMA)
             found = problems(answer)
             if not found:
                 return {"wypowiedz": answer["wypowiedz"].strip(),

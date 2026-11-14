@@ -137,7 +137,7 @@ class ConversationTest(unittest.TestCase):
         kompan, client = make(said("Dwa? Pytania?", "Tak", "Nie"), A1)
         conversation = kompan.new()
         self.assertEqual(conversation.view()["tekst"], A1["wypowiedz"])
-        self.assertIn("jedno pytanie", client.calls[1]["messages"][-1]["content"])
+        self.assertIn("jedno pytanie", client.calls[1]["messages"][-1]["content"][0]["text"])
         self.assertIn("odpowiedz_ai_odrzucona", kinds(conversation))
 
     def test_ai_failure_and_coming_back(self):
@@ -197,7 +197,21 @@ class WhatTheAIKnowsTest(unittest.TestCase):
     def test_nothing_known(self):
         kompan, client = make(A1)
         kompan.new()
-        self.assertIn("Jeszcze nic.", client.calls[0]["system"][1]["text"])
+        self.assertIn("Jeszcze nic.", client.calls[0]["messages"][-1]["content"][-1]["text"])
+
+    def test_notes_are_after_the_cache_point(self):
+        # A new note must not change the cached part (system and earlier messages)
+        kompan, client = make(said("Legia?", "Tak", "Nie", notes=[("Kibicujesz Legii.", USER)]), A2)
+        kompan.new().answer(1)
+        first, second = client.calls
+        self.assertEqual(first["system"], second["system"])
+        self.assertNotIn("- Kibicujesz", json.dumps(second["system"], ensure_ascii=False))
+        cached, notes = second["messages"][-1]["content"]
+        self.assertIn("cache_control", cached)
+        self.assertNotIn("cache_control", notes)
+        self.assertIn("- Kibicujesz Legii.", notes["text"])
+        # The earlier messages carry no notes, so they match what was cached before
+        self.assertEqual(second["messages"][0]["content"], first["messages"][0]["content"][0]["text"])
 
     def test_prompt_uses_no_banned_words(self):
         kompan, client = make(A1)
@@ -336,7 +350,7 @@ class MemoryTest(unittest.TestCase):
         self.assertEqual(entries[0]["rozmowa"], conversation.id)
         self.assertIn("zapamietane", kinds(conversation))
         conversation.answer(1)
-        known = client.calls[1]["system"][1]["text"]
+        known = client.calls[1]["messages"][-1]["content"][-1]["text"]
         self.assertIn("- Kibicujesz Legii.\n", known)
         self.assertIn("- Masz brata. (przypuszczenie)", known)
 

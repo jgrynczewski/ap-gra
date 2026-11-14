@@ -39,6 +39,7 @@ Szczegóły przyjęte przy kodzie (2026-11-09, do zmiany po testach):
 - Wpis ma najwyżej 80 znaków i jest pisany tak, jakby Kompan mówił do użytkownika („Kibicujesz Legii.”). W jednej odpowiedzi najwyżej 3 wpisy, a powtórki tego, co już jest, kod pomija
 - Moment przeglądu wybiera AI. Kod pokazuje przegląd tylko wtedy, gdy czeka co najmniej 5 wpisów i AI uzna, że to dobra chwila. Co odpowiedź AI słyszy, ile wpisów czeka
 - Przegląd pokazuje najwyżej 5 najstarszych wpisów. „Coś jest źle” prowadzi przez wpisy po kolei: **Dobrze**, **To nieprawda, usuń**, **Reszta jest dobra**. „Nie teraz” odkłada przegląd o 2 godziny. Przegląd nie pyta AI, więc nic nie kosztuje
+- Notatki AI dostaje na końcu ostatniej wiadomości, za punktem pamięci podręcznej (2026-11-14, po K4). Wcześniej były w instrukcji systemowej i każdy nowy wpis unieważniał pamięć podręczną całej rozmowy: odpowiedź kosztowała wtedy ok. 4-5 centów zamiast ok. 1
 - Usunięty wpis trafia na listę „to nieprawda” (ostatnie 20), którą AI dostaje razem z notatkami, żeby nie zapisało go ponownie
 - CO O MNIE WIESZ czyta wpisy po jednym: **Dalej**, **To nieprawda, usuń**, **Wystarczy**. Przy niepotwierdzonym przypuszczeniu dodaje „To moje przypuszczenie.”. Notatek startowych tu nie ma, bo zmienia je tylko osoba techniczna
 
