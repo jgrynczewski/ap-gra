@@ -10,7 +10,11 @@ osoby.json (written by hand on the AP computer, never in the repo):
 
     {"uzytkownik": "Radek",
      "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...",
-                "wiadomosci": true, "pisze": true}]}
+                "wiadomosci": true, "pisze": true,
+                "opis": "Kim jest dla Radka i jak do niego pisać (nieobowiązkowe)."}]}
+
+The description goes to the AI with the list of people (cached part of the
+system prompt): it sets the tone of a message, never its content.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ import smtplib
 import threading
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import make_msgid
 from pathlib import Path
 from typing import Callable
 
@@ -75,23 +80,42 @@ class People:
     def find(self, name: str) -> dict | None:
         return next((p for p in self.for_messages() if p["imie"] == name), None)
 
+    def writer(self, address: str) -> dict | None:
+        """The person on the list who may write to Kompan from this address."""
+        address = address.strip().lower()
+        return next((p for p in self._load()["osoby"]
+                     if p.get("pisze") and str(p["email"]).strip().lower() == address), None)
+
     def for_ai(self) -> str:
         people = self.for_messages()
         if not people:
             return "Lista jest pusta: nie proponuj przekazania (pole przekaz zostaw puste)."
-        return "\n".join(f"- {p['imie']}" + (f" ({p['kto']})" if p.get("kto") else "") for p in people)
+        lines = []
+        for p in people:
+            lines.append(f"- {p['imie']}" + (f" ({p['kto']})" if p.get("kto") else ""))
+            if str(p.get("opis", "")).strip():
+                lines.append(f"  Opis: {str(p['opis']).strip()}")
+        return "\n".join(lines)
 
 
-def mail_text(user: str, text: str) -> tuple[str, str]:
+def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
+              can_reply: bool = False) -> tuple[str, str]:
     """(subject, body). Says that Kompan wrote it from a conversation, because
-    the AI could have misunderstood something."""
-    subject = f"{user} przekazuje przez Kompana"
-    body = (f"{user} przekazuje przez Kompana (na podstawie rozmowy):\n\n"
+    the AI could have misunderstood something. A reply keeps the subject of
+    the topic ("Re: ..."), so it stays in the same thread for the person too."""
+    if reply_subject:
+        subject = reply_subject if reply_subject.lower().startswith("re:") else f"Re: {reply_subject}"
+    else:
+        subject = f"{user} przekazuje przez Kompana" + (f": {title}" if title else "")
+    verb = "odpowiada" if reply_subject else "przekazuje"
+    footer = ("Możesz odpowiedzieć na tego maila - Kompan przeczyta odpowiedź na głos. "
+              "Odpowiedź może chwilę potrwać.\n" if can_reply else
+              "Ta wiadomość została wygenerowana automatycznie, prosimy na nią nie odpowiadać.\n")
+    body = (f"{user} {verb} przez Kompana (na podstawie rozmowy):\n\n"
             f"{text}\n\n"
             "--\n"
             "Treść spisał Kompan (asystent AI) na podstawie rozmowy i przed wysłaniem została zatwierdzona. "
-            "AI mogło coś źle zrozumieć - w razie wątpliwości dopytaj osobiście.\n"
-            "Ta wiadomość została wygenerowana automatycznie, prosimy na nią nie odpowiadać.\n")
+            "AI mogło coś źle zrozumieć - w razie wątpliwości dopytaj osobiście.\n" + footer)
     return subject, body
 
 
@@ -104,9 +128,11 @@ class Gmail:
     def configured(self) -> bool:
         return bool(self.user and self.password)
 
-    def __call__(self, to: str, subject: str, body: str) -> None:
+    def __call__(self, to: str, subject: str, body: str, headers: dict | None = None) -> None:
         mail = EmailMessage()
         mail["From"], mail["To"], mail["Subject"] = self.user, to, subject
+        for name, value in (headers or {}).items():  # Message-ID, In-Reply-To, References
+            mail[name] = value
         mail.set_content(body)
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as smtp:
             smtp.login(self.user, self.password)
@@ -116,8 +142,9 @@ class Gmail:
 class Outbox:
     """dane-kompan/wiadomosci/<id>.json, one per recipient."""
 
-    def __init__(self, data: Path, send: Callable[[str, str, str], None], log: Log,
-                 run: Callable[[Callable[[], None]], None] | None = None):
+    def __init__(self, data: Path, send: Callable[..., None], log: Log,
+                 run: Callable[[Callable[[], None]], None] | None = None, sender: str = ""):
+        self.sender = sender  # Kompan's address - the domain of the Message-IDs
         self.dir = data / "wiadomosci"
         self.dir.mkdir(parents=True, exist_ok=True)
         self.send = send
@@ -143,12 +170,21 @@ class Outbox:
         with self._files:
             _write_json(self.dir / f"{message['id']}.json", message)
 
-    def add(self, user: str, people: list[dict], text: str, conversation: str) -> list[dict]:
-        subject, body = mail_text(user, text)
+    def add(self, user: str, people: list[dict], text: str, conversation: str, title: str = "",
+            reply: dict | None = None) -> list[dict]:
+        """reply: {"temat_maila", "message_id", "odnosniki"} of the message answered."""
         added = []
         for n, person in enumerate(people):
+            subject, body = mail_text(user, text, title, (reply or {}).get("temat_maila", ""),
+                                      bool(person.get("pisze")))
+            message_id = make_msgid(domain=self.sender.rpartition("@")[2] or "kompan.local")
+            headers = {"Message-ID": message_id}
+            if reply and reply.get("message_id"):
+                headers["In-Reply-To"] = reply["message_id"]
+                headers["References"] = " ".join([*reply.get("odnosniki", []), reply["message_id"]])
             message = {"id": f"{datetime.now(timezone.utc):%Y%m%d-%H%M%S-%f}-{n}", "do": person["imie"],
-                       "email": person["email"], "temat": subject, "tresc": body, "stan": WAITING,
+                       "email": person["email"], "temat": subject, "tresc": body, "naglowki": headers,
+                       "message_id": message_id, "stan": WAITING,
                        "proby": 0, "blad": "", "zgloszono": "", "rozmowa": conversation,
                        "utworzona": _now(), "wyslana": ""}
             self._store(message)
@@ -160,7 +196,7 @@ class Outbox:
         with self._sending:
             for message in self.waiting():
                 try:
-                    self.send(message["email"], message["temat"], message["tresc"])
+                    self.send(message["email"], message["temat"], message["tresc"], message.get("naglowki"))
                 except Exception as error:  # noqa: BLE001 - no internet, wrong password, ...
                     error_text = f"{type(error).__name__}: {error}"
                     self._update(message["id"], proby=message["proby"] + 1, blad=error_text)

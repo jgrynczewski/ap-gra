@@ -36,12 +36,12 @@ except ImportError:
     TestClient = None
 
 
-def said(text, *options, title="Mecz", notes=(), review=False, message=None):
+def said(text, *options, title="Mecz", notes=(), review=False, message=None, mail=False):
     """message: (question, text, [names]) - a proposal to pass something on."""
     ask, body, names = message or ("", "", [])
     return {"wypowiedz": text, "opcje": list(options), "tytul_rozmowy": title,
             "zapamietaj": [{"tekst": t, "skad": s} for t, s in notes], "pora_na_przeglad": review,
-            "przekaz": {"pytanie": ask, "tresc": body, "dla": list(names)}}
+            "pora_na_wiadomosc": mail, "przekaz": {"pytanie": ask, "tresc": body, "dla": list(names)}}
 
 
 A1 = said("Cześć. Oglądałeś wczoraj mecz?", "Tak, cały", "Tylko końcówkę", "Nie")
@@ -471,12 +471,14 @@ class Mailbox:
 
     def __init__(self):
         self.mails = []
+        self.headers = []
         self.down = False
 
-    def __call__(self, to, subject, body):
+    def __call__(self, to, subject, body, headers=None):
         if self.down:
             raise OSError("brak sieci")
         self.mails.append((to, subject, body))
+        self.headers.append(headers or {})
 
 
 PEOPLE = ["Jurek", "Mama", "Tata"]
@@ -532,7 +534,7 @@ class MessagesTest(unittest.TestCase):
         conversation.answer(1)  # Wyślij
         self.assertEqual([m[0] for m in mailbox.mails], ["mama@example.com", "jurek@example.com"])
         to, subject, body = mailbox.mails[0]
-        self.assertEqual(subject, "Radek przekazuje przez Kompana")
+        self.assertEqual(subject, "Radek przekazuje przez Kompana: Mecz")
         self.assertIn(LEKI[1], body)
         self.assertIn("prosimy na nią nie odpowiadać", body)
         # Now the AI's own question; the AI hears what happened with the next choice
@@ -570,6 +572,17 @@ class MessagesTest(unittest.TestCase):
         self.assertTrue(view["tekst"].startswith("Wiadomość dla: Jurek\n\n" + better[1]), view["tekst"])
         conversation.answer(1)
         self.assertEqual([m[0] for m in mailbox.mails], ["jurek@example.com"])
+
+    def test_descriptions_of_people_go_to_the_ai(self):
+        kompan, _ = make()
+        kompan.messages_on = True
+        (kompan.data / "osoby.json").write_text(json.dumps({"uzytkownik": "Radek", "osoby": [
+            {"imie": "Mama", "kto": "mama", "email": "mama@example.com", "wiadomosci": True,
+             "opis": "Ciepło, po domowemu."},
+            {"imie": "Jurek", "email": "jurek@example.com", "wiadomosci": True}]}), encoding="utf-8")
+        known = kompan.system()[1]["text"]
+        self.assertIn("- Mama (mama)\n  Opis: Ciepło, po domowemu.\n- Jurek", known)
+        self.assertNotIn("Opis: \n", known)
 
     def test_more_people_than_fit(self):
         names = ["A", "B", "C", "D", "E"]

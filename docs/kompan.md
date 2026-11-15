@@ -1,6 +1,6 @@
 # Kompan: rozmowa z AI w AP
 
-**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Kod etapu 4 (wiadomości) gotowy 2026-11-14, czeka na konto Gmail. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem testy K7-K8. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
+**Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Kod etapu 4 (wiadomości) gotowy 2026-11-14, etapu 5 (poczta przychodząca, jeden zwiastun w AP) 2026-11-15; oba czekają na konto Gmail. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem testy K7-K8. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
 
@@ -82,8 +82,8 @@ Zasady:
 
 Zarys planu:
 1. Testy K7-K8 (wysyłka z prawdziwego Gmaila; przy okazji konto, z którego będziemy czytać)
-2. Etap 5 - poczta przychodząca w Kompanie: odczyt maili, wątki, sprawdzenie nadawcy, czytanie i odpowiadanie; serwer Kompana wystawia „zdania do powiedzenia” (`POST /v1/kompan/powiadomienia`, jak `v1/notifications` w Wicero)
-3. `Notifier` w AP pyta też Kompana („Masz nową wiadomość od Mamy. Przeczytasz ją w Kompanie.”); nie mówi tego, gdy Kompan jest otwarty - wtedy mówi sam Kompan
+2. ✅ (kod 2026-11-15) Etap 5 - poczta przychodząca w Kompanie: odczyt maili, wątki, sprawdzenie nadawcy, czytanie i odpowiadanie; serwer Kompana wystawia „zdania do powiedzenia” (`POST /v1/kompan/powiadomienia`, jak `v1/notifications` w Wicero)
+3. ✅ (kod 2026-11-15) `Notifier` w AP pyta też Kompana („Masz nową wiadomość od Mamy. Przeczytasz ją w Kompanie.”); nie mówi tego, gdy Kompan jest otwarty - wtedy mówi sam Kompan
 4. Czat Wicero (repo `wicero`, etap czatu) - wiadomości trafiają do korespondencji w Kompanie jako kanał preferowany; ogłasza je Wicero tą samą drogą co filmy (etap 7 Kompana)
 5. Most film ↔ Kompan
 
@@ -121,15 +121,17 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 - **Popraw** wraca do rozmowy: AI dopytuje, co zmienić (odpowiedzi do wyboru), i proponuje nową treść; odbiorcy zostają ci sami, więc od razu jest potwierdzenie
 - Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: „Radek przekazuje przez Kompana”. Treść: „Radek przekazuje przez Kompana (na podstawie rozmowy):”, wiadomość, a pod kreską: że spisało ją AI i mogło coś źle zrozumieć, oraz formułka o nieodpowiadaniu
 - O wyniku (wysłana do kolejki / nic nie wysłano / nieudana wysyłka / w końcu wysłana) AI dowiaduje się raz, dopisane do następnego wyboru użytkownika; o wiadomościach, które wciąż czekają, także na początku nowej rozmowy
-- AI nie zna adresów, tylko imiona i to, kim są
+- AI nie zna adresów, tylko imiona, to, kim są, i opisy
 
 `dane-kompan/osoby.json` (wpisuje osoba techniczna; zmiana działa bez restartu):
 ```
 {"uzytkownik": "Radek",
- "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "pisze": true},
-           {"imie": "Mama", "kto": "mama", "email": "...", "wiadomosci": true, "pisze": true}]}
+ "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "pisze": true,
+            "opis": "Brat Radka, programista. Swobodnie, po bratersku, można żartować."},
+           {"imie": "Profesor", "kto": "prowadzący zajęcia", "email": "...", "wiadomosci": true, "pisze": true,
+            "opis": "Prof. Nowak. Forma „Panie Profesorze”, uprzejmie i swobodnie, ale nie jak do kolegi. Bez zdrobnień."}]}
 ```
-`wiadomosci`: można mu coś przekazać; `pisze`: Kompan przyjmuje od niego maile (etap 5; zamiast `prosby`, decyzja 2026-11-15).
+`wiadomosci`: można mu coś przekazać; `pisze`: Kompan przyjmuje od niego maile (etap 5; zamiast `prosby`, decyzja 2026-11-15); `opis` (nieobowiązkowy, 2026-11-15): kim jest dla Radka i jak do niego pisać - zwykły tekst, kilka zdań. Idzie do AI z listą osób (w buforowanej części promptu, więc prawie nic nie kosztuje) i ustawia ton wiadomości i propozycji odpowiedzi, nigdy treść. Pisze go osoba techniczna; to, czego Kompan dowie się w rozmowie, idzie do notatek. Opis trafia do API przy każdej rozmowie, gdy wiadomości są włączone - nie wpisywać tam niczego, czego nie chcemy tam wysyłać.
 
 ### Log, koszty, prywatność
 
@@ -201,12 +203,23 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Wysyłka przez Gmail, kolejka i ponawianie
 - [ ] Testy K7-K8 na komputerze z AP (potrzebne konto Gmail i `osoby.json`)
 
-**Etap 5 - poczta przychodząca** (zamiast próśb przez SSH, decyzja 2026-11-14; układ powiadomień 2026-11-15)
+**Etap 5 - poczta przychodząca** (zamiast próśb przez SSH, decyzja 2026-11-14; układ powiadomień 2026-11-15; kod gotowy 2026-11-15 - testy z udawanym AI, udawaną skrzynką IMAP i udawanym Gmailem, plansza i `Notifier` na atrapach `wx`, klient z Pythona 2.7 przeciw prawdziwemu serwerowi)
 - [x] Układ docelowy powiadomień i korespondencji (wyżej, „Powiadomienia i korespondencja w całym AP”)
-- [ ] Szczegóły do ustalenia (wyżej, „Poczta przychodząca”)
-- [ ] Odczyt maili (IMAP), wątki, sprawdzenie nadawcy, obcięcie cytatów
-- [ ] WIADOMOŚCI (osoba → tematy → wiadomości), ogłoszenie przy wejściu i w trakcie rozmowy, odpowiedź przez przebieg z etapu 4
-- [ ] `POST /v1/kompan/powiadomienia` i drugie źródło w `Notifier` (AP)
+- [x] Szczegóły (wyżej, „Poczta przychodząca”)
+- [x] Odczyt maili (IMAP), wątki, sprawdzenie nadawcy, obcięcie cytatów (`kompan/poczta.py`)
+- [x] WIADOMOŚCI (osoba → tematy → wiadomości), ogłoszenie przy wejściu i w trakcie rozmowy, odpowiedź przez przebieg z etapu 4 (`kompan/skrzynka.py`, `kompan/rozmowa.py`)
+- [x] `POST /v1/kompan/powiadomienia` i drugie źródło w `Notifier` (AP, `modules/wicero.py`)
+- [ ] Testy K9-K10 na komputerze z AP (po K7-K8)
+
+Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
+- Skrzynka sprawdzana co minutę; mail czytany bez oznaczania jako przeczytany i oznaczany dopiero po zapisaniu, więc awaria w środku nie gubi maila. Odrzucone maile (spoza listy, bez potwierdzonego nadawcy) zostają w Gmailu jako przeczytane i są w `dane-kompan/poczta.jsonl`
+- Sprawdzenie nadawcy: tylko pierwszy nagłówek `Authentication-Results` od `mx.google.com`; wystarczy DMARC pass albo DKIM / SPF pass dla domeny nadawcy
+- Obcinanie cytatów i stopek tylko kodem (polskie i angielskie wzorce Gmaila, Outlooka, telefonów). Pomoc AI przy nietypowych mailach - dopiero gdy w praktyce kod sobie nie poradzi
+- Czas wiadomości to chwila przyjścia (zegar nadawcy bywa zły); w nagłówku stała data („15.11, 18:40”), żeby nagranie się nie zmieniało
+- Ekrany poczty robi serwer (jak przegląd notatek); AP tylko je pokazuje. W WIADOMOŚCIACH: WRÓĆ o poziom wyżej, **Wystarczy** - ekran wejścia
+- Ogłoszenie poza Kompanem: każda nowa wiadomość raz; przy starcie AP - przypomnienie o czekających. Wicero zostaje źródłem filmów jak dotąd; `Notifier` działa też bez Wicero (AP tylko z Kompanem)
+- Odpowiedź: temat maila „Re: …” i nagłówki wątku, więc u odbiorcy też jest w tym samym wątku. Treść: „Radek odpowiada przez Kompana (na podstawie rozmowy):”. Stopka zaprasza do odpowiedzi tylko osoby, od których Kompan przyjmuje maile (`pisze`)
+- Odpowiedź z WIADOMOŚCI to nowa rozmowa; odpowiedź na wiadomość przeczytaną w trakcie rozmowy - w tej samej rozmowie
 
 **Etap 6 - wyszukiwanie w internecie** (jak najszybciej po etapach 1-5)
 - [ ] Sprawdzanie bieżących informacji; treść ze stron to dane, nie polecenia

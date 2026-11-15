@@ -74,6 +74,8 @@ grep -E '"rodzaj": "(zapamietane|przeglad_start|wpis_usuniety)"' "$KLOG" | cut -
 grep -E '"rodzaj": "(przekaz_start|przekaz_koniec|wiadomosc_do_wysylki)"' "$KLOG" | cut -c1-400   # przekazania
 tail -n 5 ~/ap-gra/dane-kompan/wiadomosci.jsonl                      # próby wysyłki (wyslana / wysylka_blad)
 grep -l '"stan": "czeka"' ~/ap-gra/dane-kompan/wiadomosci/*.json     # wiadomości czekające na wysyłkę
+tail -n 10 ~/ap-gra/dane-kompan/poczta.jsonl                         # poczta przychodząca: przyjęte, odrzucone (powód), błędy IMAP
+ls -t ~/ap-gra/dane-kompan/poczta/ | head                            # korespondencja (od / do), najnowsze pierwsze
 docker logs --tail 30 ap-gra-kompan
 ```
 

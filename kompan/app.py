@@ -24,6 +24,8 @@ from kreator.rozmowa import audio_of
 
 from .notatki import GUESS
 from .rozmowa import INTERFACE, RETURN_LABEL, ConversationError, Conversation, Kompan
+from .poczta import Inbox
+from .skrzynka import MAIL_BUTTON, POCZTA, ROZMOWA, announcement
 from .wiadomosci import Gmail
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,6 +36,7 @@ EFFORT = os.environ.get("AP_KOMPAN_EFFORT", "medium")
 LIMIT_USD = float(os.environ.get("AP_KOMPAN_LIMIT_USD", "5"))
 # Kompan's own Gmail account and its app password (only in .env.kompan)
 GMAIL = Gmail(os.environ.get("AP_KOMPAN_GMAIL", ""), os.environ.get("AP_KOMPAN_GMAIL_HASLO", ""))
+INBOX = Inbox(GMAIL.user, GMAIL.password)  # the same account, read by IMAP (stage 5)
 AUDIO_URL = "/v1/kompan/audio"
 RECORDING = re.compile(r"[0-9a-f]+\.wav")
 CONVERSATION_ID = re.compile(r"[0-9a-z-]+")
@@ -66,12 +69,16 @@ async def lifespan(app: FastAPI):
         threading.Thread(target=record_interface, args=(narrator,), daemon=True).start()
     # Messages that failed (no internet) are sent again every few minutes
     threading.Thread(target=app.state.kompan.outbox.retry_forever, daemon=True).start()
+    # New mails: the mailbox every minute
+    if app.state.kompan.checker:
+        threading.Thread(target=app.state.kompan.checker.forever, daemon=True).start()
     yield
 
 
 app = FastAPI(title="ap-gra-kompan", lifespan=lifespan)
 app.state.kompan = Kompan(DATA, AI(model=MODEL, effort=EFFORT), _narrator(), AUDIO_URL, LIMIT_USD,
-                          send=GMAIL if GMAIL.configured() else None)
+                          send=GMAIL if GMAIL.configured() else None,
+                          fetch=INBOX if GMAIL.configured() else None)
 
 
 class NotFound(Exception):
@@ -80,6 +87,11 @@ class NotFound(Exception):
 
 @app.exception_handler(ConversationError)
 def conversation_error(request: Request, error: ConversationError) -> JSONResponse:
+    return JSONResponse({"error": str(error)}, status_code=409)
+
+
+@app.exception_handler(ValueError)
+def mailbox_error(request: Request, error: ValueError) -> JSONResponse:
     return JSONResponse({"error": str(error)}, status_code=409)
 
 
@@ -115,7 +127,26 @@ def health() -> dict:
             # Messages (stage 4): mail account set, people from osoby.json, waiting to be sent
             "poczta": kompan.messages_on, "osoby": kompan.people.names(),
             "osoby_blad": kompan.people.problem(),
-            "wiadomosci_czekaja": len(kompan.outbox.waiting())}
+            "wiadomosci_czekaja": len(kompan.outbox.waiting()),
+            # Incoming (stage 5): who wrote new ones (the announcement at the entry), how
+            # many wait for an answer (WIADOMOŚCI (n)), whether there is any correspondence
+            "poczta_nowe": list(dict.fromkeys(m["osoba"] for m in kompan.correspondence.new())),
+            "poczta_czeka": len(kompan.correspondence.waiting()),
+            "poczta_jest": bool(kompan.correspondence.people_list()),
+            # Ready texts with recordings: the announcement at the entry and the WIADOMOŚCI button
+            **_mail_entry(kompan)}
+
+
+def _mail_entry(kompan) -> dict:
+    new = kompan.correspondence.new()
+    names = list(dict.fromkeys(m["osoba"] for m in new))
+    waiting = len(kompan.correspondence.waiting())
+    news = (announcement(names, len(new)) if names else "")
+    button = (f"{MAIL_BUTTON} ({waiting})" if waiting else MAIL_BUTTON)         if kompan.correspondence.people_list() else ""
+    kompan.record_texts([news, button])
+    return {"poczta_ogloszenie": {"text": news, "audio": audio_of(kompan.narrator, news, AUDIO_URL)} if news else None,
+            "poczta_przycisk": {"text": button, "audio": audio_of(kompan.narrator, button, AUDIO_URL)}
+            if button else None}
 
 
 def _notes() -> dict:
@@ -175,6 +206,64 @@ def leave(cid: str) -> dict:
     conversation = _conversation(cid)
     conversation.leave()
     return conversation.view()
+
+
+# --- WIADOMOŚCI (stage 5) ------------------------------------------------------
+
+class MailboxStart(BaseModel):
+    tryb: str = "nowe"  # "nowe": the waiting messages one after another; "lista": by person
+
+
+class Startup(BaseModel):
+    startup: bool = False
+
+
+def _mailbox_view() -> dict:
+    """Like a conversation's view (AP shows it the same way). After ODPOWIEDZ:
+    the view of the new conversation; at the end: status "koniec"."""
+    kompan = app.state.kompan
+    mailbox = kompan.mailbox
+    kompan.record_texts(mailbox.texts())  # short labels; a message's parts are recorded when it came
+    view = mailbox.view()
+    if view["status"] == ROZMOWA:
+        return kompan.get(view["rozmowa"]).view()
+    audio = lambda text: audio_of(kompan.narrator, text, AUDIO_URL)  # noqa: E731
+    if view["status"] != POCZTA:
+        return {**view, "audio": audio(view.get("tekst", ""))}
+    return {"id": "poczta", "status": POCZTA, "tekst": view["tekst"], "audio": audio(view["tekst"]),
+            "opcje": [{"numer": n, "tekst": t, "audio": audio(t)} for n, t in enumerate(view["opcje"], 1)],
+            "stale": [], "mozna_wrocic": view["mozna_wrocic"], "tytul": ""}
+
+
+@app.post("/v1/kompan/poczta/start")
+def mailbox_start(body: MailboxStart) -> dict:
+    app.state.kompan.mailbox.start("lista" if body.tryb == "lista" else "nowe")
+    return _mailbox_view()
+
+
+@app.post("/v1/kompan/poczta/odpowiedz")
+def mailbox_answer(body: Answer) -> dict:
+    app.state.kompan.mailbox.answer(body.opcja)
+    return _mailbox_view()
+
+
+@app.post("/v1/kompan/poczta/wroc")
+def mailbox_back() -> dict:
+    app.state.kompan.mailbox.back()
+    return _mailbox_view()
+
+
+@app.post("/v1/kompan/poczta/pozniej")
+def mailbox_later() -> dict:
+    """PÓŹNIEJ on the announcement at the entry."""
+    app.state.kompan.mailbox.later_all()
+    return {"ok": True}
+
+
+@app.post("/v1/kompan/powiadomienia")
+def announcements(body: Startup) -> dict:
+    """For AP's Notifier (outside Kompan) - the same contract as Wicero's v1/notifications."""
+    return {"say": app.state.kompan.correspondence.announcements(body.startup)}
 
 
 @app.get("/v1/kompan/audio/{name}")

@@ -134,7 +134,7 @@ Osobna usługa z tego samego obrazu ([`kompan.md`](kompan.md)), z własnym klucz
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia", "notatki", "poczta", "osoby", "osoby_blad", "wiadomosci_czekaja"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu; `notatki`: liczba wpisów; `poczta`: konto Gmail ustawione; `osoby`: imiona, do których można wysyłać; `osoby_blad`: błąd w `osoby.json` albo `""`; `wiadomosci_czekaja`: niewysłane |
+| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia", "notatki", "poczta", "osoby", "osoby_blad", "wiadomosci_czekaja", "poczta_nowe", "poczta_czeka", "poczta_jest", "poczta_ogloszenie", "poczta_przycisk"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu; `notatki`: liczba wpisów; `poczta`: konto Gmail ustawione; `osoby`: imiona, do których można wysyłać; `osoby_blad`: błąd w `osoby.json` albo `""`; `wiadomosci_czekaja`: niewysłane |
 | `POST /v1/kompan/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`) |
 | `GET /v1/kompan/rozmowy/<id>` | - | stan rozmowy |
 | `POST /v1/kompan/rozmowy/<id>/odpowiedz` | `{"opcja": 2}` | stan (zwykle `mysli`) |
@@ -143,6 +143,11 @@ Osobna usługa z tego samego obrazu ([`kompan.md`](kompan.md)), z własnym klucz
 | `POST /v1/kompan/rozmowy/<id>/wyjscie` | - | ZAKOŃCZ: zapis w logu, rozmowa zostaje bez zmian |
 | `GET /v1/kompan/notatki` | - | CO O MNIE WIESZ: `{"wpisy": [{"id", "tekst", "przypuszczenie", "audio"}]}`, od najstarszego; bez notatek startowych |
 | `POST /v1/kompan/notatki/<id>/usun` | - | „To nieprawda, usuń”: lista jak wyżej; nieznany wpis → 404 |
+| `POST /v1/kompan/poczta/start` | `{"tryb": "nowe" \| "lista"}` | WIADOMOŚCI: czekające po kolei albo lista osób. Widok jak rozmowy, `status` `poczta` (same `opcje`, `stale` puste); `koniec` - powrót na ekran wejścia (`tekst` do powiedzenia albo `""`) |
+| `POST /v1/kompan/poczta/odpowiedz` | `{"opcja": n}` | Wybór w WIADOMOŚCIACH; po ODPOWIEDZ / ODPISZ Z KOMPANEM - widok nowej rozmowy (odpowiedź do autora); skrzynka zamknięta → 409 |
+| `POST /v1/kompan/poczta/wroc` | - | WRÓĆ w WIADOMOŚCIACH: poziom wyżej |
+| `POST /v1/kompan/poczta/pozniej` | - | PÓŹNIEJ na ogłoszeniu przy wejściu: nowe przestają być nowe |
+| `POST /v1/kompan/powiadomienia` | `{"startup": bool}` | Dla `Notifier` w AP (poza Kompanem): `{"say": [teksty]}`, jak `v1/notifications` w Wicero |
 | `GET /v1/kompan/audio/<nazwa>.wav` | - | nagranie (adres ze stanu) |
 
 Stan: `{"id", "status", "tekst", "audio", "opcje": [...], "stale": [...], "mozna_wrocic", "tytul"}`. `opcje` to odpowiedzi od AI (2-4), `stale` to Blisko, Inne propozycje, Zmień temat; każdy przycisk to `{"numer", "tekst", "audio"}`, z jedną numeracją dla `/odpowiedz`.
@@ -152,6 +157,7 @@ Stan: `{"id", "status", "tekst", "audio", "opcje": [...], "stale": [...], "mozna
 - Rozmowy są na dysku i przeżywają restart usługi. Historia: `dane-kompan/rozmowy/<id>/log.jsonl` - każde zapytanie do AI, każda odpowiedź, każde pytanie z wszystkimi opcjami, każdy wybór. Koszty: `dane-kompan/koszty.jsonl`.
 - Ustawienia w `.env.kompan`: `AP_KOMPAN_MODEL`, `AP_KOMPAN_EFFORT`, `AP_KOMPAN_LIMIT_USD`. Notatki startowe: zwykły tekst w `dane-kompan/notatki_startowe.txt`. Wpisy zapisane przez AI: `dane-kompan/notatki.json`, poprzednie wersje w `dane-kompan/notatki-wersje/`.
 - Wiadomości (etap 4): `AP_KOMPAN_GMAIL` i `AP_KOMPAN_GMAIL_HASLO` (hasło aplikacji) w `.env.kompan`; bez nich Kompan nic nie proponuje. Odbiorcy w `dane-kompan/osoby.json` (wzór w `docs/kompan.md`), czytany przy każdym użyciu. Kolejka: `dane-kompan/wiadomosci/<id>.json` (jeden plik na odbiorcę, `stan`: `czeka` / `wyslana`), każda próba w `dane-kompan/wiadomosci.jsonl`; niewysłane ponawiane co 5 minut.
+- Poczta przychodząca (etap 5): to samo konto, IMAP co minutę. Przyjmowane maile od osób z `"pisze": true` z potwierdzonym nadawcą: `dane-kompan/poczta/<id>.json` (`kierunek` `od` / `do`, `temat_id`, `stan` `nowa` / `czeka` / `zamknieta`); wysłane przez Radka też tu trafiają. Log: `dane-kompan/poczta.jsonl` (`mail_przyjety`, `mail_odrzucony`, `poczta_blad`). Health: `poczta_nowe` (imiona), `poczta_czeka` (liczba), `poczta_jest`, `poczta_ogloszenie` / `poczta_przycisk` (`{"text", "audio"}` albo `null`). W rozmowie status `czytanie` - wiadomość czytana w trakcie rozmowy.
 
 ## Uruchomienie
 
