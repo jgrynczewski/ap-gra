@@ -120,3 +120,4 @@ Polecenia i linki: [`podglad.md`](podglad.md).
 - [ ] Wpisywanie własnego tekstu podczas tworzenia gry (PISAK) - po pierwszej wersji; pisanie skanowaniem jest powolne, dlatego nie na start
 - [ ] Poprawki po zagraniu: przycisk POPRAW, nowa wersja gry (zapis stanu przestaje do niej pasować), limit np. 3 na grę - po pierwszej wersji. To pierwsza interakcja użytkownika AP z AI, więc na start jak najmniej naraz (decyzja 2026-11-07)
 - [ ] Usuwanie gier użytkownika - na razie ręcznie z `dane/gry/`
+- [ ] Gry na stronie AbleLab Studio (zagranie w przeglądarce, decyzja autora) - plan w repo `wicero`, `docs/plan-tworczosc.md`; wersja web gry: `tools/web.py` (2026-11-15)

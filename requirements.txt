@@ -5,3 +5,5 @@ uvicorn==0.34.0
 anthropic==2.6.0
 # Animation frames of user games (rysownik/) and the still picture
 pillow==13.0.0
+# Web version of a game (tools/web.py, AbleLab Studio): narrator recordings as MP3
+lameenc==1.9.0
