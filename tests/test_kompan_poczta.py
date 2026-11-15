@@ -138,12 +138,12 @@ class CorrespondenceTest(unittest.TestCase):
         sent_id = mailbox.headers[0]["Message-ID"]
         [ours] = kompan.correspondence.topics("Mama")
         self.assertEqual(ours["temat"], "Leki")
-        reply = kompan.correspondence.receive(mail(subject="Re: Radek przekazuje przez Kompana: Leki",
+        reply = kompan.correspondence.receive(mail(subject="Re: Leki",
                                                    body="Zadzwonię do przychodni.", reply_to=sent_id))
         self.assertEqual((reply["temat_id"], reply["temat"]), (ours["temat_id"], "Leki"))
         messages = kompan.correspondence.topic(ours["temat_id"])
         self.assertEqual([m["kierunek"] for m in messages], [FROM, TO])  # the newest first
-        self.assertIn("Możesz odpowiedzieć", mailbox.mails[0][2])  # Mama "pisze"
+        self.assertIn("Na tego maila można odpowiedzieć", mailbox.mails[0][2])  # Mama "pisze"
 
     def test_announcements_once_and_at_the_start(self):
         kompan, _, _ = setup()
@@ -298,7 +298,7 @@ class ReplyTest(unittest.TestCase):
         conversation.answer(1)  # Wyślij
         to, subject, body = mailbox.mails[0]
         self.assertEqual((to, subject), ("mama@example.com", "Re: Obiad"))
-        self.assertIn("Radek odpowiada przez Kompana", body)
+        self.assertTrue(body.startswith(answer[1] + "\n\nRadek\n"), body)
         self.assertEqual(mailbox.headers[0]["In-Reply-To"], message["message_id"])
         self.assertEqual(kompan.correspondence.get(message["id"])["stan"], CLOSED)
         topic = kompan.correspondence.topic(message["temat_id"])

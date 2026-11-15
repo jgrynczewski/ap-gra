@@ -53,6 +53,29 @@ services:
     volumes:
       - ./dane-kompan:/app/dane-kompan
 
+  # Kompan for tests (docs/kompan.md -> "Testy bez psucia danych"): the same
+  # code, but its own data (dane-kompan-test/), key and costs (.env.kompan-test),
+  # port 8769. Starts only on demand:
+  #   docker compose --profile test up -d ap-gra-kompan-test
+  # AP talks to it when started with AP_KOMPAN_URL=http://localhost:8769
+  ap-gra-kompan-test:
+    profiles: ["test"]
+    image: ap-gra
+    pull_policy: never
+    container_name: ap-gra-kompan-test
+    restart: "no"
+    command: ["uvicorn", "kompan.app:app", "--host", "0.0.0.0", "--port", "8769"]
+    ports:
+      - "127.0.0.1:8769:8769"
+    env_file:
+      - path: .env.kompan-test
+        required: false
+    environment:
+      AP_KOMPAN_DATA: /app/dane-kompan
+      AP_KOMPAN_TEST: "1"
+    volumes:
+      - ./dane-kompan-test:/app/dane-kompan
+
   # Runs the animation code written by the AI (docs/kreator-gier.md, stage 5):
   # no network, no key, read-only system, limits; sees only dane/rysownik/
   # (jobs from the creator, as files)

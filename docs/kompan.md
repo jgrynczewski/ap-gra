@@ -57,7 +57,7 @@ Zamiast osobnych próśb przez SSH: jedna poczta przychodząca Kompana. Odpowied
 - Nic nie znika: NIE ODPOWIADAM tylko zdejmuje wiadomość z czekających (nie jest ogłaszana ani liczona w WIADOMOŚCI (n)). Kompan mówi wtedy, gdzie ją znaleźć („Gdybyś zmienił zdanie, znajdziesz ją w WIADOMOŚCIACH, u Mamy.”)
 - WIADOMOŚCI to korespondencja, nie skrzynka do załatwienia: **osoba → tematy → wiadomości**. Osoby: najpierw z nowymi, potem od ostatniego kontaktu (Inne osoby). Tematy: od najświeższego (Inne tematy). Wiadomości w temacie: od najnowszej, **Wcześniejsza** / **ODPISZ Z KOMPANEM** / **Wystarczy**; w temacie także wiadomości wysłane przez Radka („Ty napisałeś: …”). ODPISZ Z KOMPANEM zawsze, także przy starych i zamkniętych
 - Skróty: nowa wiadomość (z ogłoszenia przy wejściu i z WIADOMOŚCI (n)) - prosto do treści; osoba z jednym tematem - bez poziomu tematów
-- Tematy bez AI: mail - wątek po nagłówkach, nowy mail to nowy temat. Wiadomości Radka mają temat z tytułu rozmowy („Radek przekazuje przez Kompana: leki”, w AP „Leki”). Cudze maile - temat od nadawcy, a gdy pusty albo „Re:” / „Fw:” - pierwsze słowa treści. ODPISZ zawsze w tym samym temacie; nowa sprawa z rozmowy to nowy temat
+- Tematy bez AI: mail - wątek po nagłówkach, nowy mail to nowy temat. Wiadomości Radka mają temat z tytułu rozmowy (w mailu i w AP „Leki”). Cudze maile - temat od nadawcy, a gdy pusty albo „Re:” / „Fw:” - pierwsze słowa treści. ODPISZ zawsze w tym samym temacie; nowa sprawa z rozmowy to nowy temat
 - Czat Wicero: jeszcze nie przeanalizowany (osobny temat, może przynieść własne pomysły, np. tematy w czacie). Model korespondencji nie może zakładać, jak będzie wyglądał - kanał dostarcza wiadomości z przypisaniem do tematu, a jak czat Wicero będzie je dzielił, ustalimy przy jego projekcie
 - **Bez osobnych próśb** (2026-11-15): prośba to zwykła wiadomość („Radek, co Ci przeszkadza w programie do pisania?”), czytana w oryginale i obsługiwana przez ODPOWIEDZ. Nie wymagamy od piszących wiedzy, że po drodze jest AI, ani specjalnych oznaczeń. Kompan może po przeczytaniu zaproponować „Porozmawiamy o tym?”. Gdyby kiedyś był potrzebny temat zlecony Kompanowi do poruszenia w rozmowie bez czytania listu - osobny rodzaj wiadomości, model to udźwignie
 - Długie maile i załączniki (2026-11-15), bez AI: nagłówek („Od Mamy, wczoraj o 18:40. Leki.”), treść w częściach na granicach akapitów i zdań z **Dalej** („To dłuższa wiadomość, 4 części.”), HTML zamieniany na tekst, linki czytane jako „link” i nieotwierane, nagrania robione w tle zaraz po przyjściu maila. Załączniki: tylko informacja („Są załączniki: 2 zdjęcia i plik PDF, których nie pokażę.”)
@@ -109,7 +109,8 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 
 - Odpowiedź na prośbę idzie domyślnie do jej autora, bez kroków 1-2
 - Odbiorcy tylko z listy w pliku. Wysyła kod, dopiero po „Wyślij”; AI nie może nic wysłać
-- Każda wiadomość mówi, że spisał ją Kompan na podstawie rozmowy, bo AI mogło coś źle zrozumieć. Na końcu standardowa formułka: „Ta wiadomość została wygenerowana automatycznie, prosimy na nią nie odpowiadać”
+- **Pierwsza osoba** (decyzja 2026-11-15, zmienia trzecią osobę z 2026-11-08): wiadomość brzmi jak list Radka („Leki dostaję za późno, czasem o godzinę.”), podpisana jego imieniem; nadawca w programie pocztowym: „Radek (przez Kompana)”
+- **Stopka o AI pod każdą wiadomością**, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. Kompan ułożył treść na podstawie rozmowy z nadawcą, a nadawca zatwierdził ją przed wysłaniem. Sformułowania pochodzą od AI, więc może się w nich zdarzyć nieścisłość. Jeśli coś jest niejasne, warto dopytać bezpośrednio.” Potem jedno zdanie: „Na tego maila można odpowiedzieć - Kompan przeczyta odpowiedź na głos.” (osoby z `pisze`) albo „Odpowiedzi na ten adres nie są czytane.” Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
 - Kanał: osobne konto Gmail, hasło aplikacji tylko w `.env`. Po etapie czatu w Wicero także Wicero, wraz z odpowiedziami odbiorców
 - Nieudana wysyłka czeka w kolejce i jest ponawiana; użytkownik o tym słyszy, a jeśli problem trwa, także przy następnej rozmowie
 
@@ -119,7 +120,7 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 - Gdy wybrano wszystkie osoby z listy, „Komuś jeszcze?” jest pomijane
 - Potwierdzenie: „Wiadomość dla: Mama, Jurek”, treść, „Wysłać?”. Treść najwyżej 250 znaków, żeby zmieściła się na ekranie. Nagrywane w chwili wyboru, więc AP czeka na nie kilka sekund
 - **Popraw** wraca do rozmowy: AI dopytuje, co zmienić (odpowiedzi do wyboru), i proponuje nową treść; odbiorcy zostają ci sami, więc od razu jest potwierdzenie
-- Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: „Radek przekazuje przez Kompana”. Treść: „Radek przekazuje przez Kompana (na podstawie rozmowy):”, wiadomość, a pod kreską: że spisało ją AI i mogło coś źle zrozumieć, oraz formułka o nieodpowiadaniu
+- Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: tytuł rozmowy (bez tytułu: „Wiadomość od: Radek”). Treść: wiadomość w pierwszej osobie, imię, stopka o AI (wyżej). Bez powitania: tę samą treść może dostać kilka osób
 - O wyniku (wysłana do kolejki / nic nie wysłano / nieudana wysyłka / w końcu wysłana) AI dowiaduje się raz, dopisane do następnego wyboru użytkownika; o wiadomościach, które wciąż czekają, także na początku nowej rozmowy
 - AI nie zna adresów, tylko imiona, to, kim są, i opisy
 
@@ -140,6 +141,16 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 - Model: `claude-opus-5-5`, zmiana w `.env`. Po tygodniu porównanie z Sonnet 5.5 na prawdziwych kosztach
 - Szacunek (nie pomiar, 100 pytań dziennie): Opus 5.5 ok. 45-105 $ miesięcznie, Sonnet 5.5 ok. 20-50 $
 - Dzienny limit w Kompanie: 5 $ na start, w `.env`. Po przekroczeniu: „Na dziś muszę już kończyć”, rozmowa zostaje zapisana
+
+### Testy bez psucia danych (2026-11-15)
+
+Od 2026-11-15 Radek używa Kompana na co dzień: `dane-kompan/` to prawdziwe dane (notatki, rozmowy, streszczenie, koszty), których nie wolno zgubić ani zaśmiecić testami.
+- **Osobna instancja testowa** `ap-gra-kompan-test` (profil `test` w `docker-compose.yml`): ten sam kod, port 8769, własne dane `dane-kompan-test/`, własny plik `.env.kompan-test` (osobny klucz API `ap-kompan-test` - koszty testów osobno także w konsoli Anthropic - i własny dzienny limit). Uruchamiana tylko na czas testów
+- AP rozmawia z nią, gdy jest uruchomione z `AP_KOMPAN_URL=http://localhost:8769`. Ekran wejścia mówi wtedy „Kompan, wersja testowa”, a `health` ma `"test": true` - nie da się pomylić
+- Prawdziwa instancja w tym czasie działa dalej, ale z nią nic się nie dzieje: rozmowy, notatki, logi i koszty testów są tylko w `dane-kompan-test/`
+- Poczta: dwie instancje nie mogą czytać tej samej skrzynki (jedna oznaczyłaby maile drugiej jako przeczytane). Na testy K7-K10 Gmail ma tylko instancja testowa, a prawdziwa dostaje go po testach. Później, do kolejnych testów poczty - osobne konto Gmail testowe. W `osoby.json` testowej instancji tylko adresy osoby technicznej
+- Kopia `dane-kompan/` przed każdą aktualizacją (`tar` do `~/kopie-kompan/`); nowa wersja czyta dane starszych (test `test_data_from_stage_3_still_works`)
+- „Czysty stan” (przeniesienie `dane-kompan/` na bok) był jednorazowy - przed oddaniem Kompana. Na prawdziwych danych go nie robimy
 
 ## Architektura
 
@@ -218,7 +229,7 @@ Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
 - Czas wiadomości to chwila przyjścia (zegar nadawcy bywa zły); w nagłówku stała data („15.11, 18:40”), żeby nagranie się nie zmieniało
 - Ekrany poczty robi serwer (jak przegląd notatek); AP tylko je pokazuje. W WIADOMOŚCIACH: WRÓĆ o poziom wyżej, **Wystarczy** - ekran wejścia
 - Ogłoszenie poza Kompanem: każda nowa wiadomość raz; przy starcie AP - przypomnienie o czekających. Wicero zostaje źródłem filmów jak dotąd; `Notifier` działa też bez Wicero (AP tylko z Kompanem)
-- Odpowiedź: temat maila „Re: …” i nagłówki wątku, więc u odbiorcy też jest w tym samym wątku. Treść: „Radek odpowiada przez Kompana (na podstawie rozmowy):”. Stopka zaprasza do odpowiedzi tylko osoby, od których Kompan przyjmuje maile (`pisze`)
+- Odpowiedź: temat maila „Re: …” i nagłówki wątku, więc u odbiorcy też jest w tym samym wątku. Treść jak każda wiadomość: pierwsza osoba, imię, stopka o AI. Stopka zaprasza do odpowiedzi tylko osoby, od których Kompan przyjmuje maile (`pisze`)
 - Odpowiedź z WIADOMOŚCI to nowa rozmowa; odpowiedź na wiadomość przeczytaną w trakcie rozmowy - w tej samej rozmowie
 
 **Etap 6 - wyszukiwanie w internecie** (jak najszybciej po etapach 1-5)

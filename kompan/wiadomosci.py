@@ -24,7 +24,7 @@ import smtplib
 import threading
 from datetime import datetime, timezone
 from email.message import EmailMessage
-from email.utils import make_msgid
+from email.utils import formataddr, make_msgid
 from pathlib import Path
 from typing import Callable
 
@@ -98,25 +98,36 @@ class People:
         return "\n".join(lines)
 
 
+# Under every message, as ordinary text (no "-- " signature line, which mail
+# programs often grey out): the words come from the AI, so they may be off.
+# Neutral grammatically - the same for every user.
+AI_NOTE = ("Ta wiadomość powstała z pomocą Kompana, asystenta AI. Kompan ułożył treść na podstawie "
+           "rozmowy z nadawcą, a nadawca zatwierdził ją przed wysłaniem. Sformułowania pochodzą od AI, "
+           "więc może się w nich zdarzyć nieścisłość. Jeśli coś jest niejasne, warto dopytać bezpośrednio.")
+CAN_REPLY = "Na tego maila można odpowiedzieć - Kompan przeczyta odpowiedź na głos."
+NO_REPLY = "Odpowiedzi na ten adres nie są czytane."
+
+
 def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
               can_reply: bool = False) -> tuple[str, str]:
-    """(subject, body). Says that Kompan wrote it from a conversation, because
-    the AI could have misunderstood something. A reply keeps the subject of
-    the topic ("Re: ..."), so it stays in the same thread for the person too."""
+    """(subject, body). The text is in the first person, as the user's own
+    message, signed with the name; under it - that the AI helped write it.
+    A reply keeps the subject of the topic ("Re: ..."), so it stays in the
+    same thread for the person too."""
     if reply_subject:
         subject = reply_subject if reply_subject.lower().startswith("re:") else f"Re: {reply_subject}"
     else:
-        subject = f"{user} przekazuje przez Kompana" + (f": {title}" if title else "")
-    verb = "odpowiada" if reply_subject else "przekazuje"
-    footer = ("Możesz odpowiedzieć na tego maila - Kompan przeczyta odpowiedź na głos. "
-              "Odpowiedź może chwilę potrwać.\n" if can_reply else
-              "Ta wiadomość została wygenerowana automatycznie, prosimy na nią nie odpowiadać.\n")
-    body = (f"{user} {verb} przez Kompana (na podstawie rozmowy):\n\n"
-            f"{text}\n\n"
-            "--\n"
-            "Treść spisał Kompan (asystent AI) na podstawie rozmowy i przed wysłaniem została zatwierdzona. "
-            "AI mogło coś źle zrozumieć - w razie wątpliwości dopytaj osobiście.\n" + footer)
+        subject = title or f"Wiadomość od: {user}"
+    body = (f"{text}\n\n"
+            f"{user}\n\n\n"
+            f"{AI_NOTE}\n"
+            f"{CAN_REPLY if can_reply else NO_REPLY}\n")
     return subject, body
+
+
+def sender_name(user: str) -> str:
+    """The name the person sees as the sender."""
+    return f"{user} (przez Kompana)" if user else "Kompan"
 
 
 class Gmail:
@@ -129,10 +140,14 @@ class Gmail:
         return bool(self.user and self.password)
 
     def __call__(self, to: str, subject: str, body: str, headers: dict | None = None) -> None:
+        headers = dict(headers or {})
+        # "Od" - the name shown as the sender; the address is always Kompan's
+        name = headers.pop("Od", "")
         mail = EmailMessage()
-        mail["From"], mail["To"], mail["Subject"] = self.user, to, subject
-        for name, value in (headers or {}).items():  # Message-ID, In-Reply-To, References
-            mail[name] = value
+        mail["From"] = formataddr((name, self.user)) if name else self.user
+        mail["To"], mail["Subject"] = to, subject
+        for header, value in headers.items():  # Message-ID, In-Reply-To, References
+            mail[header] = value
         mail.set_content(body)
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as smtp:
             smtp.login(self.user, self.password)
@@ -178,7 +193,7 @@ class Outbox:
             subject, body = mail_text(user, text, title, (reply or {}).get("temat_maila", ""),
                                       bool(person.get("pisze")))
             message_id = make_msgid(domain=self.sender.rpartition("@")[2] or "kompan.local")
-            headers = {"Message-ID": message_id}
+            headers = {"Od": sender_name(user), "Message-ID": message_id}
             if reply and reply.get("message_id"):
                 headers["In-Reply-To"] = reply["message_id"]
                 headers["References"] = " ".join([*reply.get("odnosniki", []), reply["message_id"]])

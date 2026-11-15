@@ -319,6 +319,34 @@ class RestartTest(unittest.TestCase):
         kompan.fold(conversation, 1)
         self.assertEqual(len(results), 1)
 
+    def test_data_from_stage_3_still_works(self):
+        # The user's real conversations were saved before stages 4-5: no fields
+        # about messages, no mail directories
+        kompan, _ = make(A1, A2)
+        old = kompan.new()
+        old.answer(1)
+        for path in kompan.data.rglob("stan.json"):
+            state = json.loads(path.read_text(encoding="utf-8"))
+            for key in ("przekaz", "poprawa", "informacja", "odpowiedz_na", "czytanie"):
+                state.pop(key, None)
+            for step in state["kroki"]:
+                step["ai"].pop("przekaz", None)
+                step["ai"].pop("pora_na_wiadomosc", None)
+            path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        for name in ("wiadomosci", "poczta"):
+            for path in sorted((kompan.data / name).rglob("*"), reverse=True):
+                path.unlink() if path.is_file() else path.rmdir()
+            if (kompan.data / name).exists():
+                (kompan.data / name).rmdir()
+        people(kompan.data, "Mama")
+        again, client = make(A3, data=kompan.data, send=Mailbox())
+        found = again.latest()
+        self.assertEqual(found.view()["tekst"], A2["wypowiedz"])
+        found.answer(1)
+        self.assertEqual(found.view()["tekst"], A3["wypowiedz"])
+        self.assertEqual(again.correspondence.waiting(), [])
+        self.assertEqual(again.outbox.waiting(), [])
+
     def test_no_conversation_to_go_back_to(self):
         kompan, _ = make()
         self.assertIsNone(kompan.latest())
@@ -534,9 +562,11 @@ class MessagesTest(unittest.TestCase):
         conversation.answer(1)  # Wyślij
         self.assertEqual([m[0] for m in mailbox.mails], ["mama@example.com", "jurek@example.com"])
         to, subject, body = mailbox.mails[0]
-        self.assertEqual(subject, "Radek przekazuje przez Kompana: Mecz")
-        self.assertIn(LEKI[1], body)
-        self.assertIn("prosimy na nią nie odpowiadać", body)
+        self.assertEqual(subject, "Mecz")
+        self.assertTrue(body.startswith(LEKI[1] + "\n\nRadek\n\n\nTa wiadomość powstała z pomocą Kompana"), body)
+        self.assertIn("Odpowiedzi na ten adres nie są czytane.", body)
+        self.assertNotIn("\n-- \n", body)  # mail programs grey out what is under it
+        self.assertEqual(mailbox.headers[0]["Od"], "Radek (przez Kompana)")
         # Now the AI's own question; the AI hears what happened with the next choice
         self.assertEqual(conversation.view()["tekst"], "Coś jeszcze?")
         conversation.answer(1)
@@ -679,6 +709,11 @@ class MessagesTest(unittest.TestCase):
             Gmail("kompan@gmail.com", "haslo")("mama@example.com", "Temat", "Treść")
         self.assertEqual(sent, [("smtp.gmail.com", 465), ("kompan@gmail.com", "haslo"),
                                 ("kompan@gmail.com", "mama@example.com", "Temat", "Treść\n")])
+        del sent[:]
+        with mock.patch("kompan.wiadomosci.smtplib.SMTP_SSL", FakeSMTP):
+            Gmail("kompan@gmail.com", "haslo")("mama@example.com", "Temat", "Treść",
+                                               {"Od": "Radek (przez Kompana)", "Message-ID": "<1@x>"})
+        self.assertEqual(sent[2][0], '"Radek (przez Kompana)" <kompan@gmail.com>')
         self.assertFalse(Gmail("", "").configured())
 
     def test_bad_osoby_json(self):

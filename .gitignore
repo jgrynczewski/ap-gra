@@ -8,3 +8,5 @@ dane/
 dane-kompan/
 .env
 .env.kompan
+dane-kompan-*/
+.env.kompan-test

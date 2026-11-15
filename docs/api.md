@@ -134,7 +134,7 @@ Osobna usługa z tego samego obrazu ([`kompan.md`](kompan.md)), z własnym klucz
 
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
-| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "interface", "ostatnia", "notatki", "poczta", "osoby", "osoby_blad", "wiadomosci_czekaja", "poczta_nowe", "poczta_czeka", "poczta_jest", "poczta_ogloszenie", "poczta_przycisk"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu; `notatki`: liczba wpisów; `poczta`: konto Gmail ustawione; `osoby`: imiona, do których można wysyłać; `osoby_blad`: błąd w `osoby.json` albo `""`; `wiadomosci_czekaja`: niewysłane |
+| `GET /v1/kompan/health` | - | `{"ok", "ai", "nagrania", "test", "interface", "ostatnia", "notatki", "poczta", "osoby", "osoby_blad", "wiadomosci_czekaja", "poczta_nowe", "poczta_czeka", "poczta_jest", "poczta_ogloszenie", "poczta_przycisk"}` - `ostatnia`: `{"id", "tytul", "etykieta", "audio"}` albo `null` przy pierwszym wejściu; `notatki`: liczba wpisów; `poczta`: konto Gmail ustawione; `osoby`: imiona, do których można wysyłać; `osoby_blad`: błąd w `osoby.json` albo `""`; `wiadomosci_czekaja`: niewysłane |
 | `POST /v1/kompan/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`) |
 | `GET /v1/kompan/rozmowy/<id>` | - | stan rozmowy |
 | `POST /v1/kompan/rozmowy/<id>/odpowiedz` | `{"opcja": 2}` | stan (zwykle `mysli`) |

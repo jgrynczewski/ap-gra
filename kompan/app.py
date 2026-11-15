@@ -37,6 +37,11 @@ LIMIT_USD = float(os.environ.get("AP_KOMPAN_LIMIT_USD", "5"))
 # Kompan's own Gmail account and its app password (only in .env.kompan)
 GMAIL = Gmail(os.environ.get("AP_KOMPAN_GMAIL", ""), os.environ.get("AP_KOMPAN_GMAIL_HASLO", ""))
 INBOX = Inbox(GMAIL.user, GMAIL.password)  # the same account, read by IMAP (stage 5)
+# The test instance (service ap-gra-kompan-test, docs/kompan.md -> Testy bez
+# psucia danych): own data, key and costs; AP says it on the entry screen
+TEST = os.environ.get("AP_KOMPAN_TEST", "") == "1"
+if TEST:
+    INTERFACE["kompan"] = "Kompan, wersja testowa"
 AUDIO_URL = "/v1/kompan/audio"
 RECORDING = re.compile(r"[0-9a-f]+\.wav")
 CONVERSATION_ID = re.compile(r"[0-9a-z-]+")
@@ -117,7 +122,7 @@ def health() -> dict:
     narrator = kompan.narrator
     latest = kompan.latest()
     label = RETURN_LABEL + latest.title() if latest else ""
-    return {"ok": True, "ai": configured(), "nagrania": narrator is not None,
+    return {"ok": True, "ai": configured(), "nagrania": narrator is not None, "test": TEST,
             "interface": {name: {"text": text, "audio": audio_of(narrator, text, AUDIO_URL)}
                           for name, text in INTERFACE.items()},
             # What WRÓĆ DO ROZMOWY goes back to; null - the first visit
@@ -142,7 +147,8 @@ def _mail_entry(kompan) -> dict:
     names = list(dict.fromkeys(m["osoba"] for m in new))
     waiting = len(kompan.correspondence.waiting())
     news = (announcement(names, len(new)) if names else "")
-    button = (f"{MAIL_BUTTON} ({waiting})" if waiting else MAIL_BUTTON)         if kompan.correspondence.people_list() else ""
+    button = ((f"{MAIL_BUTTON} ({waiting})" if waiting else MAIL_BUTTON)
+              if kompan.correspondence.people_list() else "")
     kompan.record_texts([news, button])
     return {"poczta_ogloszenie": {"text": news, "audio": audio_of(kompan.narrator, news, AUDIO_URL)} if news else None,
             "poczta_przycisk": {"text": button, "audio": audio_of(kompan.narrator, button, AUDIO_URL)}
