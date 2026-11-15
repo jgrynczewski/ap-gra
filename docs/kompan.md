@@ -51,7 +51,7 @@ Zamiast osobnych próśb przez SSH: jedna poczta przychodząca Kompana. Odpowied
 - **Kompan to proteza zwykłej skrzynki, nie bramka** (decyzja 2026-11-15, zmienia wcześniejsze „tylko osoby z listy”): przyjmowany jest każdy mail ze skrzynki odbiorczej, od każdego - inaczej ktoś, kto dowie się, że do Radka można pisać, nie mógłby tego zrobić bez dopisania go ręcznie do listy. Także autoodpowiedzi („jestem na urlopie” mówi, czemu nie ma jeszcze odpowiedzi) i newslettery; nagłówek mówi wtedy „To wiadomość automatyczna.”. Przed spamem chroni sam Gmail: Kompan czyta tylko skrzynkę odbiorczą, nigdy folderu Spam. Gdyby czegoś było za dużo - zwykłe filtry Gmaila, jak w każdej skrzynce
 - Nikt nie podszyje się pod bliską osobę: imię z listy (`osoby.json`) tylko gdy Gmail potwierdził nadawcę (SPF/DKIM/DMARC); inni - pod nazwą z maila, a gdy ta nazwa należy do kogoś z listy (albo adres z listy bez potwierdzenia) - z adresem: „Mama (obcy@example.com)”. Lista służy teraz do tego, komu Radek sam może coś przekazać, i do imion oraz opisów
 - Kompan czyta oryginał, nie streszczenie. AI pomaga obciąć cytaty i stopki, rozmawia o treści i pomaga ułożyć odpowiedź. Treść maila to dla AI dane, nie polecenia; wysłać i tak nic nie może bez zatwierdzenia
-- Stopka wysyłanych maili zmieni się z „prosimy nie odpowiadać” na zaproszenie do odpowiedzi
+- Stopka wysyłanych maili nie mówi już „prosimy nie odpowiadać”; o odpowiadaniu nie mówi nic, bo to rzecz normalna (sekcja „Wiadomości”)
 - Kiedy Radek się dowiaduje (2026-11-14): przy wejściu do Kompana, przed ekranem wejścia, „Masz nową wiadomość od Mamy” z **PRZECZYTAJ** i **PÓŹNIEJ**; po PÓŹNIEJ na ekranie wejścia zostaje **WIADOMOŚCI (n)**. W trakcie rozmowy AI słyszy, że przyszła wiadomość, i w spokojnej chwili (jak przegląd notatek) kod pyta „Przyszła wiadomość od Mamy. Przeczytać teraz?” - **Tak** / **Później**
 - Sprawdzanie skrzynki: zwykły kod w usłudze Kompana, bez AI i bez osobnego agenta - co minutę IMAP, każdy nowy mail zapisany w `dane-kompan/poczta/`. AP dowiaduje się przy wejściu (health) i przy każdej odpowiedzi w rozmowie; AP nie musi niczego dodatkowo odpytywać
 - Po przeczytaniu (2026-11-15): **ODPOWIEDZ** (Kompan rozmawia o treści, pomaga ułożyć odpowiedź, potem potwierdzenie i Wyślij jak w etapie 4 - do autora, w tym samym temacie), **PRZECZYTAJ JESZCZE RAZ**, **PÓŹNIEJ** (zostaje jako czekająca), **NIE ODPOWIADAM**. Czytanie bez AI, AI dopiero po ODPOWIEDZ.
@@ -109,10 +109,10 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 3. „Przekażę: …” Przyciski: **Wyślij**, **Popraw**, **Nie wysyłaj**
 
 - Odpowiedź na prośbę idzie domyślnie do jej autora, bez kroków 1-2
-- Odbiorcy tylko z listy w pliku. Wysyła kod, dopiero po „Wyślij”; AI nie może nic wysłać
+- Nowe wiadomości - tylko do osób z listy w pliku. Odpowiedź - do autora maila, także spoza listy. Wysyła kod, dopiero po „Wyślij”; AI nie może nic wysłać
 - **Pierwsza osoba** (decyzja 2026-11-15, zmienia trzecią osobę z 2026-11-08): wiadomość brzmi jak list Radka („Leki dostaję za późno, czasem o godzinę.”), podpisana jego imieniem; nadawca w programie pocztowym: „Radek (przez Kompana)”
 - **Powitanie** (2026-11-15): AI proponuje je osobno (pole `przekaz.powitanie`, najwyżej 40 znaków) w tonie z opisu osoby („Cześć Mamo,”, „Dzień dobry, Panie Profesorze,”); dla kilku osób wspólne, bez imienia („Cześć,”). Gdy Radek wybierze inne osoby niż te, które AI powitało - „Dzień dobry,” (zawsze może Poprawić). W ciągnącym się wątku bez powitania: pierwsza wiadomość Radka w temacie (nowa sprawa albo pierwsza odpowiedź) - z powitaniem, kolejne - bez. Treść najwyżej 220 znaków, żeby z powitaniem zmieściła się na ekranie potwierdzenia
-- **Stopka o AI pod każdą wiadomością**, krótka, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości.” Odpowiadanie jest czymś normalnym, więc o nim nic - każdy z listy może odpisać. Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
+- **Stopka o AI pod każdą wiadomością**, krótka, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości.” Odpowiadanie jest czymś normalnym, więc o nim nic - odpisać może każdy. Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
 - Kanał: osobne konto Gmail, hasło aplikacji tylko w `.env`. Po etapie czatu w Wicero także Wicero, wraz z odpowiedziami odbiorców
 - Nieudana wysyłka czeka w kolejce i jest ponawiana; użytkownik o tym słyszy, a jeśli problem trwa, także przy następnej rozmowie
 
@@ -159,10 +159,10 @@ Od 2026-11-15 Radek używa Kompana na co dzień: `dane-kompan/` to prawdziwe dan
 ```
 AP (Python 2.7)                       ap-gra-kompan (Python 3, port 8768)
 modules/kompan.py  --- HTTP --->      kompan/
-kompan_client.py   <-- stan ---         rozmowa, pamięć, prośby, wiadomości, koszty
+kompan_client.py   <-- stan ---         rozmowa, pamięć, wiadomości, poczta, koszty
                                         |-- Claude API
                                         |-- Piper (nagrania)
-                                        |-- Gmail (wysyłka)
+                                        |-- Gmail (wysyłka SMTP, odbiór IMAP)
                                         dane-kompan/ (tylko ta usługa)
 ```
 
@@ -182,10 +182,10 @@ dane-kompan/
   nagrania/             nagrania narratora
   notatki.json          wpisy: tekst, skąd wiadomo, data, czy potwierdzony; lista „to nieprawda”
   notatki-wersje/       poprzednie wersje notatek
-Dojdą:
-  osoby.json            (etap 4) imię, adres, czy może prosić, czy może dostawać wiadomości
-  wiadomosci/<id>.json  (etap 4) kolejka wysyłki
-  poczta/               (etap 5) wiadomości przychodzące: osoba, temat, treść, stan
+  osoby.json            (etap 4, wpisuje osoba techniczna) imię, kto, adres, czy można coś przekazać, opis
+  wiadomosci/<id>.json  (etap 4) kolejka wysyłki; wiadomosci.jsonl - log wysyłki
+  poczta/               (etap 5) korespondencja w obie strony: osoba, temat, treść, stan; poczta.jsonl - log
+Instancja testowa ma to samo w dane-kompan-test/ (sekcja „Testy bez psucia danych”).
 ```
 
 ## Plan
@@ -214,7 +214,8 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 **Etap 4 - wiadomości** (kod gotowy 2026-11-14; testy z udawanym AI i udawanym Gmailem, plansza na atrapie `wx`). Zbudowany, zanim komputer z AP wrócił do testów - niezależny od nich: przebieg i wysyłkę robi kod, a ewentualne poprawki rozmowy dotyczą promptu
 - [x] `osoby.json`, przebieg wyboru osób i zatwierdzania
 - [x] Wysyłka przez Gmail, kolejka i ponawianie
-- [ ] Testy K7-K8 na komputerze z AP (potrzebne konto Gmail i `osoby.json`)
+- [x] Pierwsza osoba, powitanie, krótka stopka o AI (2026-11-15)
+- [ ] Testy K7-K8 na instancji testowej (potrzebne konto Gmail i `osoby.json`)
 
 **Etap 5 - poczta przychodząca** (zamiast próśb przez SSH, decyzja 2026-11-14; układ powiadomień 2026-11-15; kod gotowy 2026-11-15 - testy z udawanym AI, udawaną skrzynką IMAP i udawanym Gmailem, plansza i `Notifier` na atrapach `wx`, klient z Pythona 2.7 przeciw prawdziwemu serwerowi)
 - [x] Układ docelowy powiadomień i korespondencji (wyżej, „Powiadomienia i korespondencja w całym AP”)
@@ -222,11 +223,13 @@ Testy automatyczne w kontenerze po każdym etapie, z udawanym AI. Testy ręczne 
 - [x] Odczyt maili (IMAP), wątki, sprawdzenie nadawcy, obcięcie cytatów (`kompan/poczta.py`)
 - [x] WIADOMOŚCI (osoba → tematy → wiadomości), ogłoszenie przy wejściu i w trakcie rozmowy, odpowiedź przez przebieg z etapu 4 (`kompan/skrzynka.py`, `kompan/rozmowa.py`)
 - [x] `POST /v1/kompan/powiadomienia` i drugie źródło w `Notifier` (AP, `modules/wicero.py`)
-- [ ] Testy K9-K10 na komputerze z AP (po K7-K8)
+- [x] Skrzynka jak zwykła poczta: każdy może pisać, automaty oznaczane, ochrona przed podszyciem (2026-11-15)
+- [ ] Testy K9-K10 na instancji testowej (po K7-K8)
 
 Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
 - Skrzynka sprawdzana co minutę; mail czytany bez oznaczania jako przeczytany i oznaczany dopiero po zapisaniu, więc awaria w środku nie gubi maila. Każdy przyjęty mail jest w `dane-kompan/poczta.jsonl` (`mail_przyjety`: adres, czy z listy, czy nadawca potwierdzony, czy automat)
-- Sprawdzenie nadawcy: tylko pierwszy nagłówek `Authentication-Results` od `mx.google.com`; wystarczy DMARC pass albo DKIM / SPF pass dla domeny nadawcy
+- Sprawdzenie nadawcy (decyduje tylko o tym, czy pokazać imię z listy, nic nie odrzuca): tylko pierwszy nagłówek `Authentication-Results` od `mx.google.com`; wystarczy DMARC pass albo DKIM / SPF pass dla domeny nadawcy
+- Automat (autoodpowiedź, newsletter) rozpoznawany po nagłówkach `Auto-Submitted`, `Precedence` (bulk, junk, list, auto_reply), `X-Autoreply`, `X-Autorespond`, `List-Unsubscribe` - tylko oznaczany
 - Obcinanie cytatów i stopek tylko kodem (polskie i angielskie wzorce Gmaila, Outlooka, telefonów). Pomoc AI przy nietypowych mailach - dopiero gdy w praktyce kod sobie nie poradzi
 - Czas wiadomości to chwila przyjścia (zegar nadawcy bywa zły); w nagłówku stała data („15.11, 18:40”), żeby nagranie się nie zmieniało
 - Ekrany poczty robi serwer (jak przegląd notatek); AP tylko je pokazuje. W WIADOMOŚCIACH: WRÓĆ o poziom wyżej, **Wystarczy** - ekran wejścia
@@ -245,7 +248,8 @@ Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
 
 **Uruchomienie (Ty)**
 - [x] Klucz API `ap-kompan` w `.env.kompan` na komputerze z AP (wzór: `.env.kompan.example`) - 2026-11-14
-- [ ] Konto Gmail i hasło aplikacji w `.env` (przed etapem 4)
+- [ ] Aktualizacja z kopią `dane-kompan/` i instancja testowa (`KOMPAN_PLAN.md` w AP)
+- [ ] Konto Gmail i hasło aplikacji: na testy w `.env.kompan-test`, po testach w `.env.kompan`
 - [ ] Dostęp SSH do komputera z AP - już niepotrzebny dla próśb (mail), przyda się do zdalnej pomocy
 - [ ] Lista osób i notatki startowe
 - [ ] Nagranie `sounds/kompan.ogg` (do tego czasu głos AP)
@@ -257,7 +261,7 @@ Czy rozmowa będzie dobra na tyle, żeby użytkownik chciał do niej wracać. Dl
 ## TODO
 
 - [ ] Samodzielne pisanie skanowaniem („Napiszę sam”) - na razie nie ma sensu
-- [ ] Kopia notatek i rozmów poza laptopem - do przeanalizowania (kopia przez SSH to jedna z opcji, są lepsze)
+- [ ] Kopia notatek i rozmów poza laptopem - do przeanalizowania (kopia przez SSH to jedna z opcji, są lepsze). Od 2026-11-15 ważniejsze: Radek używa Kompana na co dzień, a kopie z aktualizacji (`~/kopie-kompan/`) leżą na tym samym laptopie
 - [x] Mail jako droga odpowiedzi dla osób bez Wicero - wchodzi do etapu 5 (2026-11-14)
 - [ ] Zdjęcia z maili na ekranie AP (później; razem z mostem film ↔ Kompan)
 - [ ] Przycisk STREŚĆ przy bardzo długich mailach (AI, wyraźnie jako streszczenie) - bardzo daleko, na razie nie ma takich maili
