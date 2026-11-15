@@ -100,18 +100,17 @@ class People:
 
 # Under every message, as ordinary text (no "-- " signature line, which mail
 # programs often grey out): the words come from the AI, so they may be off.
-# Neutral grammatically - the same for every user.
-AI_NOTE = ("Ta wiadomość powstała z pomocą Kompana, asystenta AI. Kompan ułożył treść na podstawie "
-           "rozmowy z nadawcą, a nadawca zatwierdził ją przed wysłaniem. Sformułowania pochodzą od AI, "
-           "więc może się w nich zdarzyć nieścisłość. Jeśli coś jest niejasne, warto dopytać bezpośrednio.")
-CAN_REPLY = "Na tego maila można odpowiedzieć - Kompan przeczyta odpowiedź na głos."
+# Short, neutral grammatically - the same for every user. Replying is normal,
+# so nothing about it - only where a reply would not be read.
+AI_NOTE = "Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości."
 NO_REPLY = "Odpowiedzi na ten adres nie są czytane."
 
 
 def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
               can_reply: bool = False) -> tuple[str, str]:
-    """(subject, body). The text is in the first person, as the user's own
-    message, signed with the name; under it - that the AI helped write it.
+    """(subject, body). The text (with its greeting) is in the first person,
+    as the user's own message, signed with the name; under it - that the AI
+    helped write it.
     A reply keeps the subject of the topic ("Re: ..."), so it stays in the
     same thread for the person too."""
     if reply_subject:
@@ -121,7 +120,7 @@ def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
     body = (f"{text}\n\n"
             f"{user}\n\n\n"
             f"{AI_NOTE}\n"
-            f"{CAN_REPLY if can_reply else NO_REPLY}\n")
+            + ("" if can_reply else f"{NO_REPLY}\n"))
     return subject, body
 
 

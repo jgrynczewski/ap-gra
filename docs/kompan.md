@@ -110,7 +110,8 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 - Odpowiedź na prośbę idzie domyślnie do jej autora, bez kroków 1-2
 - Odbiorcy tylko z listy w pliku. Wysyła kod, dopiero po „Wyślij”; AI nie może nic wysłać
 - **Pierwsza osoba** (decyzja 2026-11-15, zmienia trzecią osobę z 2026-11-08): wiadomość brzmi jak list Radka („Leki dostaję za późno, czasem o godzinę.”), podpisana jego imieniem; nadawca w programie pocztowym: „Radek (przez Kompana)”
-- **Stopka o AI pod każdą wiadomością**, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. Kompan ułożył treść na podstawie rozmowy z nadawcą, a nadawca zatwierdził ją przed wysłaniem. Sformułowania pochodzą od AI, więc może się w nich zdarzyć nieścisłość. Jeśli coś jest niejasne, warto dopytać bezpośrednio.” Potem jedno zdanie: „Na tego maila można odpowiedzieć - Kompan przeczyta odpowiedź na głos.” (osoby z `pisze`) albo „Odpowiedzi na ten adres nie są czytane.” Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
+- **Powitanie** (2026-11-15): AI proponuje je osobno (pole `przekaz.powitanie`, najwyżej 40 znaków) w tonie z opisu osoby („Cześć Mamo,”, „Dzień dobry, Panie Profesorze,”); dla kilku osób wspólne, bez imienia („Cześć,”). Gdy Radek wybierze inne osoby niż te, które AI powitało - „Dzień dobry,” (zawsze może Poprawić). W ciągnącym się wątku bez powitania: pierwsza wiadomość Radka w temacie (nowa sprawa albo pierwsza odpowiedź) - z powitaniem, kolejne - bez. Treść najwyżej 220 znaków, żeby z powitaniem zmieściła się na ekranie potwierdzenia
+- **Stopka o AI pod każdą wiadomością**, krótka, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości.” Odpowiadanie jest czymś normalnym, więc o nim nic. Tylko osobom bez `pisze` (ich odpowiedzi Kompan odrzuca) dochodzi zdanie „Odpowiedzi na ten adres nie są czytane.”, żeby nie pisały w próżnię. Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
 - Kanał: osobne konto Gmail, hasło aplikacji tylko w `.env`. Po etapie czatu w Wicero także Wicero, wraz z odpowiedziami odbiorców
 - Nieudana wysyłka czeka w kolejce i jest ponawiana; użytkownik o tym słyszy, a jeśli problem trwa, także przy następnej rozmowie
 
@@ -118,9 +119,9 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 - AI proponuje przekazanie w polu `przekaz` (pytanie, treść, proponowani odbiorcy). Przebieg pokazuje kod, przed zwykłą wypowiedzią AI, jak przegląd notatek. Bez konta Gmail albo bez osób na liście AI dostaje „lista jest pusta” i nic nie proponuje
 - Kolejność osób: najpierw te, które wskazało AI, potem reszta listy. Mieszczą się 3 osoby i „Nikomu”; przy większej liście po 2 osoby na stronę i **Inne osoby** (strony w kółko)
 - Gdy wybrano wszystkie osoby z listy, „Komuś jeszcze?” jest pomijane
-- Potwierdzenie: „Wiadomość dla: Mama, Jurek”, treść, „Wysłać?”. Treść najwyżej 250 znaków, żeby zmieściła się na ekranie. Nagrywane w chwili wyboru, więc AP czeka na nie kilka sekund
+- Potwierdzenie: „Wiadomość dla: Mama, Jurek”, treść, „Wysłać?”. Treść najwyżej 220 znaków i powitanie najwyżej 40, żeby zmieściły się na ekranie. Nagrywane w chwili wyboru, więc AP czeka na nie kilka sekund
 - **Popraw** wraca do rozmowy: AI dopytuje, co zmienić (odpowiedzi do wyboru), i proponuje nową treść; odbiorcy zostają ci sami, więc od razu jest potwierdzenie
-- Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: tytuł rozmowy (bez tytułu: „Wiadomość od: Radek”). Treść: wiadomość w pierwszej osobie, imię, stopka o AI (wyżej). Bez powitania: tę samą treść może dostać kilka osób
+- Jedna wiadomość na odbiorcę, wysyłana osobno (odbiorcy nie widzą swoich adresów). Temat: tytuł rozmowy (bez tytułu: „Wiadomość od: Radek”). Treść: powitanie, wiadomość w pierwszej osobie, imię, stopka o AI (wyżej)
 - O wyniku (wysłana do kolejki / nic nie wysłano / nieudana wysyłka / w końcu wysłana) AI dowiaduje się raz, dopisane do następnego wyboru użytkownika; o wiadomościach, które wciąż czekają, także na początku nowej rozmowy
 - AI nie zna adresów, tylko imiona, to, kim są, i opisy
 
@@ -229,7 +230,7 @@ Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
 - Czas wiadomości to chwila przyjścia (zegar nadawcy bywa zły); w nagłówku stała data („15.11, 18:40”), żeby nagranie się nie zmieniało
 - Ekrany poczty robi serwer (jak przegląd notatek); AP tylko je pokazuje. W WIADOMOŚCIACH: WRÓĆ o poziom wyżej, **Wystarczy** - ekran wejścia
 - Ogłoszenie poza Kompanem: każda nowa wiadomość raz; przy starcie AP - przypomnienie o czekających. Wicero zostaje źródłem filmów jak dotąd; `Notifier` działa też bez Wicero (AP tylko z Kompanem)
-- Odpowiedź: temat maila „Re: …” i nagłówki wątku, więc u odbiorcy też jest w tym samym wątku. Treść jak każda wiadomość: pierwsza osoba, imię, stopka o AI. Stopka zaprasza do odpowiedzi tylko osoby, od których Kompan przyjmuje maile (`pisze`)
+- Odpowiedź: temat maila „Re: …” i nagłówki wątku, więc u odbiorcy też jest w tym samym wątku. Treść jak każda wiadomość: powitanie (tylko w pierwszej wiadomości Radka w temacie), pierwsza osoba, imię, stopka o AI
 - Odpowiedź z WIADOMOŚCI to nowa rozmowa; odpowiedź na wiadomość przeczytaną w trakcie rozmowy - w tej samej rozmowie
 
 **Etap 6 - wyszukiwanie w internecie** (jak najszybciej po etapach 1-5)

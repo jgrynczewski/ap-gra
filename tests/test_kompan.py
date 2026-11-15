@@ -37,11 +37,12 @@ except ImportError:
 
 
 def said(text, *options, title="Mecz", notes=(), review=False, message=None, mail=False):
-    """message: (question, text, [names]) - a proposal to pass something on."""
-    ask, body, names = message or ("", "", [])
+    """message: (question, text, [names][, greeting]) - a proposal to pass something on."""
+    ask, body, names, *rest = message or ("", "", [])
     return {"wypowiedz": text, "opcje": list(options), "tytul_rozmowy": title,
             "zapamietaj": [{"tekst": t, "skad": s} for t, s in notes], "pora_na_przeglad": review,
-            "pora_na_wiadomosc": mail, "przekaz": {"pytanie": ask, "tresc": body, "dla": list(names)}}
+            "pora_na_wiadomosc": mail, "przekaz": {"pytanie": ask, "powitanie": rest[0] if rest else "", "tresc": body,
+                                                     "dla": list(names)}}
 
 
 A1 = said("Cześć. Oglądałeś wczoraj mecz?", "Tak, cały", "Tylko końcówkę", "Nie")
@@ -602,6 +603,28 @@ class MessagesTest(unittest.TestCase):
         self.assertTrue(view["tekst"].startswith("Wiadomość dla: Jurek\n\n" + better[1]), view["tekst"])
         conversation.answer(1)
         self.assertEqual([m[0] for m in mailbox.mails], ["jurek@example.com"])
+
+    def test_greeting_for_the_people_the_ai_greeted(self):
+        greeted = ("Przekazać?", "Leki dostaję za późno.", ["Mama"], "Cześć Mamo,")
+        _, _, mailbox, conversation = self.flow(said("Dobrze.", "OK", "Dalej"), message=greeted)
+        conversation.answer(1)  # Mama
+        conversation.answer(3)  # To wszystko
+        self.assertTrue(conversation.view()["tekst"].startswith(
+            "Wiadomość dla: Mama\n\nCześć Mamo, Leki dostaję za późno."), conversation.view()["tekst"])
+        conversation.answer(1)  # Wyślij
+        body = mailbox.mails[0][2]
+        self.assertTrue(body.startswith("Cześć Mamo,\n\nLeki dostaję za późno.\n\nRadek\n"), body)
+        self.assertTrue(body.endswith("W sformułowaniach mogą zdarzyć się nieścisłości.\n"
+                                      "Odpowiedzi na ten adres nie są czytane.\n"), body)
+
+    def test_other_people_get_a_greeting_without_a_name(self):
+        greeted = ("Przekazać?", "Leki dostaję za późno.", ["Mama"], "Cześć Mamo,")
+        _, _, mailbox, conversation = self.flow(said("Dobrze.", "OK", "Dalej"), message=greeted)
+        conversation.answer(1)  # Mama
+        conversation.answer(1)  # Jurek
+        conversation.answer(2)  # To wszystko
+        conversation.answer(1)  # Wyślij
+        self.assertEqual({m[2].split("\n")[0] for m in mailbox.mails}, {"Dzień dobry,"})
 
     def test_descriptions_of_people_go_to_the_ai(self):
         kompan, _ = make()

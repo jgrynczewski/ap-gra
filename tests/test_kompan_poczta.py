@@ -143,7 +143,9 @@ class CorrespondenceTest(unittest.TestCase):
         self.assertEqual((reply["temat_id"], reply["temat"]), (ours["temat_id"], "Leki"))
         messages = kompan.correspondence.topic(ours["temat_id"])
         self.assertEqual([m["kierunek"] for m in messages], [FROM, TO])  # the newest first
-        self.assertIn("Na tego maila można odpowiedzieć", mailbox.mails[0][2])  # Mama "pisze"
+        # Mama "pisze": replying is normal, nothing about it under the message
+        self.assertNotIn("Odpowiedzi na ten adres", mailbox.mails[0][2])
+        self.assertTrue(mailbox.mails[0][2].endswith("mogą zdarzyć się nieścisłości.\n"), mailbox.mails[0][2])
 
     def test_announcements_once_and_at_the_start(self):
         kompan, _, _ = setup()
@@ -281,7 +283,7 @@ class MailboxTest(unittest.TestCase):
 
 class ReplyTest(unittest.TestCase):
     def test_reply_from_the_mailbox(self):
-        answer = ("Odpisać tak?", "Radek przyjdzie w niedzielę.", ["Mama"])
+        answer = ("Odpisać tak?", "Przyjdę w niedzielę.", ["Mama"], "Cześć Mamo,")
         kompan, client, mailbox = setup(said("Co odpowiesz?", "Przyjdę", "Nie dam rady"),
                                         said("Dobrze.", "OK", "Dalej", message=answer))
         message = kompan.correspondence.receive(mail())
@@ -291,6 +293,7 @@ class ReplyTest(unittest.TestCase):
         opening = client.calls[0]["messages"][0]["content"][0]["text"]
         self.assertIn("chce odpowiedzieć na wiadomość. Pisze Mama, temat: Obiad", opening)
         self.assertIn("«Przyjdziesz w niedzielę?»", opening)
+        self.assertIn("jeszcze nie pisała w tym temacie: odpowiedź zaczyna się od powitania", opening)
         conversation.answer(1)
         view = conversation.view()
         self.assertEqual(view["status"], PRZEKAZ)
@@ -298,11 +301,21 @@ class ReplyTest(unittest.TestCase):
         conversation.answer(1)  # Wyślij
         to, subject, body = mailbox.mails[0]
         self.assertEqual((to, subject), ("mama@example.com", "Re: Obiad"))
-        self.assertTrue(body.startswith(answer[1] + "\n\nRadek\n"), body)
+        self.assertTrue(body.startswith("Cześć Mamo,\n\nPrzyjdę w niedzielę.\n\nRadek\n"), body)
         self.assertEqual(mailbox.headers[0]["In-Reply-To"], message["message_id"])
         self.assertEqual(kompan.correspondence.get(message["id"])["stan"], CLOSED)
         topic = kompan.correspondence.topic(message["temat_id"])
         self.assertEqual([m["kierunek"] for m in topic], [TO, FROM])
+        self.assertTrue(topic[0]["tresc"].startswith("Cześć Mamo,"))  # Radek sees what went
+
+    def test_no_greeting_when_the_thread_goes_on(self):
+        kompan, client, _ = setup(said("Co dopiszesz?", "Że przyjdę", "Nic"))
+        message = kompan.correspondence.receive(mail())
+        kompan.correspondence.sent({"imie": "Mama", "email": "mama@example.com"}, "Obiad", "Przyjdę.",
+                                   "<r1@x>", "Re: Obiad", {"temat_id": message["temat_id"], "temat": "Obiad"})
+        kompan.reply(message)
+        opening = client.calls[0]["messages"][0]["content"][0]["text"]
+        self.assertIn("już pisała w tym temacie: bez powitania", opening)
 
     def test_a_message_during_a_conversation(self):
         answer = ("Odpisać tak?", "Radek przyjdzie.", ["Mama"])
