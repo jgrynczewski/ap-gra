@@ -151,7 +151,7 @@ Od 2026-11-15 Radek używa Kompana na co dzień: `dane-kompan/` to prawdziwe dan
 - AP rozmawia z nią, gdy jest uruchomione z `AP_KOMPAN_URL=http://localhost:8769`. Ekran wejścia mówi wtedy „Kompan, wersja testowa”, a `health` ma `"test": true` - nie da się pomylić
 - Prawdziwa instancja w tym czasie działa dalej, ale z nią nic się nie dzieje: rozmowy, notatki, logi i koszty testów są tylko w `dane-kompan-test/`
 - Poczta: dwie instancje nie mogą czytać tej samej skrzynki (jedna oznaczyłaby maile drugiej jako przeczytane). Na testy K7-K10 Gmail ma tylko instancja testowa, a prawdziwa dostaje go po testach. Później, do kolejnych testów poczty - osobne konto Gmail testowe. W `osoby.json` testowej instancji tylko adresy osoby technicznej
-- Kopia `dane-kompan/` przed każdą aktualizacją (`tar` do `~/kopie-kompan/`); nowa wersja czyta dane starszych (test `test_data_from_stage_3_still_works`)
+- Kopia `dane-kompan/` przed każdą aktualizacją (`tar` do `~/kopie-kompan/`), potem porównanie liczby notatek i ostatniej rozmowy - robi to `tools/kompan-aktualizuj.sh`, opis kroków w `KOMPAN_PLAN.md` (AP); nowa wersja czyta dane starszych (test `test_data_from_stage_3_still_works`)
 - „Czysty stan” (przeniesienie `dane-kompan/` na bok) był jednorazowy - przed oddaniem Kompana. Na prawdziwych danych go nie robimy
 
 ## Architektura
