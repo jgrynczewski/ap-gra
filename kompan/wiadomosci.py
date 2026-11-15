@@ -80,8 +80,11 @@ class People:
     def find(self, name: str) -> dict | None:
         return next((p for p in self.for_messages() if p["imie"] == name), None)
 
-    def writer(self, address: str) -> dict | None:
-        """The person on the list who may write to Kompan from this address."""
+    def all_names(self) -> list[str]:
+        return [p["imie"] for p in self._load()["osoby"]]
+
+    def by_address(self, address: str) -> dict | None:
+        """The person on the list with this address."""
         address = address.strip().lower()
         return next((p for p in self._load()["osoby"]
                      if str(p["email"]).strip().lower() == address), None)

@@ -6,10 +6,15 @@ came by mail (read from Kompan's own Gmail by IMAP) and what Radek sent (stage
 References headers; a new mail from someone starts a new topic. Nothing is ever
 deleted: "Nie odpowiadam" only takes a message off the waiting list.
 
-Only mails from people on the list (osoby.json) whose sender Gmail confirmed
-(DMARC, or DKIM / SPF of the sender's own domain), and not sent by a machine
-(an "I am on holiday" reply, a newsletter), are taken; the rest only goes to
-the log. No AI here: reading works without it.
+Kompan is the user's mailbox, not a gate (decision 2026-11-15): every mail
+in the inbox is taken, from anyone - also auto-replies ("I am on holiday" says
+why there is no answer yet). Spam is kept out by Gmail itself: only INBOX is
+read, never the Spam folder. A person from the list (osoby.json) is named by
+the list only when Gmail confirmed the sender (DMARC, or DKIM / SPF of the
+sender's own domain); anyone else by the name in the mail, and with the
+address when that name is taken by someone on the list ("Mama
+(obcy@example.com)"), so nobody can pass for a close person. No AI here:
+reading works without it.
 
 dane-kompan/poczta/<id>.json - one file per message.
 """
@@ -200,7 +205,7 @@ def sender_confirmed(mail: email.message.Message, address: str) -> bool:
 
 def automatic(mail) -> bool:
     """Sent by a machine, not by the person: auto-replies (RFC 3834), bulk
-    mail and newsletters - they would only be noise read aloud."""
+    mail and newsletters. Taken like any mail; the header says it."""
     submitted = str(mail.get("Auto-Submitted", "")).strip().lower()
     precedence = str(mail.get("Precedence", "")).strip().lower()
     return ((bool(submitted) and submitted != "no")
@@ -291,29 +296,36 @@ class Correspondence:
 
     # --- adding --------------------------------------------------------------
 
+    def sender(self, mail: dict) -> tuple[str, bool]:
+        """(the name to show, whether it is a person from the list)."""
+        person = self.people.by_address(mail["adres"])
+        if person and mail["potwierdzony"]:
+            return person["imie"], True
+        name = mail["nazwa"].strip().strip('"').strip() or mail["adres"]
+        if name.lower() in {n.lower() for n in self.people.all_names()}:
+            name = f"{name} ({mail['adres']})"
+        return name, False
+
     def receive(self, raw: bytes) -> dict | None:
-        """A mail from the mailbox: saved if it comes from someone on the list,
-        Gmail confirmed the sender and no machine sent it; otherwise only logged."""
+        """A mail from the inbox - every one is taken; None only when it is
+        already here."""
         mail = parse(raw)
-        person = self.people.writer(mail["adres"])
-        reason = ("spoza listy" if person is None else "niepotwierdzony nadawca" if not mail["potwierdzony"]
-                  else "automatyczny" if mail["automat"] else "")
-        if reason:
-            self.log.write("mail_odrzucony", adres=mail["adres"], temat=mail["temat_maila"], powod=reason)
-            return None
+        name, known = self.sender(mail)
         with self._lock:
             if mail["message_id"] and any(m.get("message_id") == mail["message_id"] for m in self._all()):
                 return None  # already here
             parent = self._topic_of(mail["odnosniki"])
             message = {"id": f"{datetime.now(timezone.utc):%Y%m%d-%H%M%S-%f}-{token_hex(2)}", "kierunek": FROM,
-                       "osoba": person["imie"], "email": mail["adres"], "message_id": mail["message_id"],
+                       "osoba": name, "email": mail["adres"], "message_id": mail["message_id"],
+                       "z_listy": known, "potwierdzony": mail["potwierdzony"], "automat": mail["automat"],
                        "temat_id": parent["temat_id"] if parent else mail["message_id"] or token_hex(8),
                        "temat": parent["temat"] if parent else title_of(mail["temat_maila"], mail["tresc"]),
                        "temat_maila": mail["temat_maila"], "tresc": mail["tresc"], "czas": _now(),
                        "zalaczniki": mail["zalaczniki"], "stan": NEW, "ogloszona": False, "w_rozmowie": False,
                        "czas_nadania": mail["czas"]}
             self._store(message)
-        self.log.write("mail_przyjety", id=message["id"], osoba=message["osoba"], temat=message["temat"])
+        self.log.write("mail_przyjety", id=message["id"], osoba=name, adres=mail["adres"], z_listy=known,
+                       potwierdzony=mail["potwierdzony"], automat=mail["automat"], temat=message["temat"])
         return message
 
     def sent(self, person: dict, title: str, text: str, message_id: str, subject: str,

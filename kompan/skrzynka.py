@@ -60,7 +60,8 @@ def when(iso: str) -> str:
 
 def header(message: dict) -> str:
     if message["kierunek"] == FROM:
-        return f"Pisze {message['osoba']}, {when(message['czas'])}. Temat: {message['temat']}."
+        machine = " To wiadomość automatyczna." if message.get("automat") else ""
+        return f"Pisze {message['osoba']}, {when(message['czas'])}. Temat: {message['temat']}.{machine}"
     return f"Twoja wiadomość do: {message['osoba']}, {when(message['czas'])}. Temat: {message['temat']}."
 
 

@@ -18,7 +18,7 @@ from kompan.poczta import (CLOSED, FROM, NEW, PART_LINES, TO, WAITING, Checker, 
                            attachments_text, html_text, parse, parts, sender_confirmed, strip_quotes, title_of)
 from kompan.rozmowa import CZYTANIE, PRZEKAZ, PYTANIE, SEND, YES  # noqa: E402
 from kompan.skrzynka import (AGAIN, ALL_READ, EARLIER, ENOUGH, KONIEC, LATER, NEXT, NO_REPLY,  # noqa: E402
-                             POCZTA, REPLY, WRITE)
+                             POCZTA, REPLY, WRITE, pages)
 from test_kompan import Mailbox, make, said, texts  # noqa: E402
 
 try:
@@ -32,11 +32,11 @@ GOOD = "mx.google.com; dkim=pass header.i=@example.com; spf=pass smtp.mailfrom=m
 
 
 def mail(sender="mama@example.com", subject="Obiad", body="Przyjdziesz w niedzielę?", reply_to="",
-         auth=GOOD, html=None, message_id=None, attachments=(), headers=None):
+         auth=GOOD, html=None, message_id=None, attachments=(), headers=None, name="Mama"):
     message = EmailMessage()
-    for name, value in (headers or {}).items():
-        message[name] = value
-    message["From"], message["To"], message["Subject"] = f"Mama <{sender}>", "kompan@gmail.com", subject
+    for header, value in (headers or {}).items():
+        message[header] = value
+    message["From"], message["To"], message["Subject"] = f"{name} <{sender}>", "kompan@gmail.com", subject
     message["Message-ID"] = message_id or f"<{abs(hash((sender, subject, body)))}@example.com>"
     message["Date"] = "Sun, 15 Nov 2026 17:40:00 +0000"
     if auth:
@@ -117,24 +117,46 @@ class ReadingTest(unittest.TestCase):
 
 
 class CorrespondenceTest(unittest.TestCase):
-    def test_who_is_taken(self):
+    def test_every_mail_is_taken(self):
+        # A mailbox, not a gate: anyone may write (spam stays in Gmail's Spam folder)
         kompan, _, _ = setup()
         correspondence = kompan.correspondence
-        self.assertIsNone(correspondence.receive(mail(sender="obcy@example.com")))
-        self.assertIsNone(correspondence.receive(mail(auth="")))  # sender not confirmed
-        # sent by a machine: an auto-reply, a newsletter
-        self.assertIsNone(correspondence.receive(mail(subject="Urlop", headers={"Auto-Submitted": "auto-replied"})))
-        self.assertIsNone(correspondence.receive(mail(subject="Gazetka", headers={"Precedence": "bulk"})))
-        self.assertIsNone(correspondence.receive(mail(subject="Nowości",
-                                                      headers={"List-Unsubscribe": "<mailto:x@example.com>"})))
-        self.assertIsNotNone(correspondence.receive(mail(sender="sasiad@example.com",
-                                                         headers={"Auto-Submitted": "no"})))
         message = correspondence.receive(mail())
-        self.assertEqual((message["osoba"], message["stan"], message["temat"]), ("Mama", NEW, "Obiad"))
+        self.assertEqual((message["osoba"], message["stan"], message["temat"], message["z_listy"]),
+                         ("Mama", NEW, "Obiad", True))
         self.assertIsNone(correspondence.receive(mail()))  # the same mail again
-        rejected = [json.loads(line) for line in (kompan.data / "poczta.jsonl").read_text().splitlines()]
-        self.assertEqual([r["powod"] for r in rejected if r["rodzaj"] == "mail_odrzucony"],
-                         ["spoza listy", "niepotwierdzony nadawca", "automatyczny", "automatyczny", "automatyczny"])
+        stranger = correspondence.receive(mail(sender="jan@example.com", name="Jan Kowalski", subject="Koncert"))
+        self.assertEqual((stranger["osoba"], stranger["z_listy"], stranger["stan"]), ("Jan Kowalski", False, NEW))
+        bare = correspondence.receive(mail(sender="ktos@example.com", name="", subject="Pytanie"))
+        self.assertEqual(bare["osoba"], "ktos@example.com")
+        # Nobody passes for a close person: a taken name gets the address
+        fake = correspondence.receive(mail(sender="obcy@example.com", subject="Pilne"))
+        self.assertEqual(fake["osoba"], "Mama (obcy@example.com)")
+        unconfirmed = correspondence.receive(mail(auth="", subject="Kolacja"))
+        self.assertEqual((unconfirmed["osoba"], unconfirmed["z_listy"]), ("Mama (mama@example.com)", False))
+        # An auto-reply too: it says why there is no answer yet
+        holiday = correspondence.receive(mail(sender="jurek@example.com", subject="Re: Leki",
+                                              headers={"Auto-Submitted": "auto-replied"}))
+        self.assertEqual((holiday["osoba"], holiday["automat"]), ("Jurek", True))
+        self.assertTrue(pages(holiday)[0].startswith("Pisze Jurek, "), pages(holiday)[0])
+        self.assertIn("Temat: Leki. To wiadomość automatyczna.", pages(holiday)[0])
+        self.assertNotIn("automatyczna", pages(message)[0])
+        log = [json.loads(line) for line in (kompan.data / "poczta.jsonl").read_text().splitlines()]
+        self.assertEqual(sum(e["rodzaj"] == "mail_przyjety" for e in log), 6)
+        self.assertFalse(any(e["rodzaj"] == "mail_odrzucony" for e in log))
+
+    def test_a_reply_to_a_stranger(self):
+        kompan, _, mailbox = setup(said("Co odpowiesz?", "Przyjdę", "Nie"),
+                                   said("Dobrze.", "OK", "Dalej",
+                                        message=("Odpisać?", "Przyjdę na koncert.", [], "Dzień dobry,")))
+        kompan.correspondence.receive(mail(sender="jan@example.com", name="Jan Kowalski", subject="Koncert"))
+        kompan.mailbox.start("nowe")
+        kompan.mailbox.answer(1)  # Odpowiedz
+        conversation = kompan.get(kompan.mailbox.view()["rozmowa"])
+        conversation.answer(1)
+        self.assertTrue(conversation.view()["tekst"].startswith("Wiadomość dla: Jan Kowalski"))
+        conversation.answer(1)  # Wyślij
+        self.assertEqual(mailbox.mails[0][:2], ("jan@example.com", "Re: Koncert"))
 
     def test_a_reply_to_a_sent_message_joins_its_topic(self):
         kompan, _, mailbox = setup(said("Coś jeszcze?", "Tak", "Nie", title="Leki",
