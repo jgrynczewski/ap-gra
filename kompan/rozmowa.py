@@ -757,7 +757,6 @@ class Conversation:
         if flow.get("odpowiedz") and self.reply_to:
             context = self.reply_to
             person = kompan.people.find(context["osoba"]) or {"imie": context["osoba"], "email": context["email"]}
-            person = {**person, "pisze": True}  # they wrote, so they may write back
             queued = kompan.outbox.add(user, [person], letter, self.id, reply=context)
             for message in queued:
                 kompan.correspondence.sent(person, context["temat"], letter, message["message_id"],

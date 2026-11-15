@@ -565,7 +565,6 @@ class MessagesTest(unittest.TestCase):
         to, subject, body = mailbox.mails[0]
         self.assertEqual(subject, "Mecz")
         self.assertTrue(body.startswith(LEKI[1] + "\n\nRadek\n\n\nTa wiadomość powstała z pomocą Kompana"), body)
-        self.assertIn("Odpowiedzi na ten adres nie są czytane.", body)
         self.assertNotIn("\n-- \n", body)  # mail programs grey out what is under it
         self.assertEqual(mailbox.headers[0]["Od"], "Radek (przez Kompana)")
         # Now the AI's own question; the AI hears what happened with the next choice
@@ -614,8 +613,8 @@ class MessagesTest(unittest.TestCase):
         conversation.answer(1)  # Wyślij
         body = mailbox.mails[0][2]
         self.assertTrue(body.startswith("Cześć Mamo,\n\nLeki dostaję za późno.\n\nRadek\n"), body)
-        self.assertTrue(body.endswith("W sformułowaniach mogą zdarzyć się nieścisłości.\n"
-                                      "Odpowiedzi na ten adres nie są czytane.\n"), body)
+        self.assertTrue(body.endswith("\n\n\nTa wiadomość powstała z pomocą Kompana, asystenta AI. "
+                                      "W sformułowaniach mogą zdarzyć się nieścisłości.\n"), body)
 
     def test_other_people_get_a_greeting_without_a_name(self):
         greeted = ("Przekazać?", "Leki dostaję za późno.", ["Mama"], "Cześć Mamo,")

@@ -6,9 +6,10 @@ came by mail (read from Kompan's own Gmail by IMAP) and what Radek sent (stage
 References headers; a new mail from someone starts a new topic. Nothing is ever
 deleted: "Nie odpowiadam" only takes a message off the waiting list.
 
-Only mails from people on the list (osoby.json, "pisze") whose sender Gmail
-confirmed (DMARC, or DKIM / SPF of the sender's own domain) are taken; the
-rest only goes to the log. No AI here: reading works without it.
+Only mails from people on the list (osoby.json) whose sender Gmail confirmed
+(DMARC, or DKIM / SPF of the sender's own domain), and not sent by a machine
+(an "I am on holiday" reply, a newsletter), are taken; the rest only goes to
+the log. No AI here: reading works without it.
 
 dane-kompan/poczta/<id>.json - one file per message.
 """
@@ -197,6 +198,16 @@ def sender_confirmed(mail: email.message.Message, address: str) -> bool:
     return False
 
 
+def automatic(mail) -> bool:
+    """Sent by a machine, not by the person: auto-replies (RFC 3834), bulk
+    mail and newsletters - they would only be noise read aloud."""
+    submitted = str(mail.get("Auto-Submitted", "")).strip().lower()
+    precedence = str(mail.get("Precedence", "")).strip().lower()
+    return ((bool(submitted) and submitted != "no")
+            or precedence in ("bulk", "junk", "list", "auto_reply")
+            or any(mail.get(h) is not None for h in ("X-Autoreply", "X-Autorespond", "List-Unsubscribe")))
+
+
 def parse(raw: bytes) -> dict:
     """The parts of a mail that matter here."""
     mail = email.message_from_bytes(raw, policy=email.policy.default)
@@ -223,7 +234,8 @@ def parse(raw: bytes) -> dict:
     return {"adres": address.lower(), "nazwa": name, "temat_maila": str(mail.get("Subject", "")),
             "message_id": str(mail.get("Message-ID", "")).strip(),
             "odnosniki": re.findall(r"<[^>]+>", references), "czas": when, "tresc": text,
-            "zalaczniki": attachments, "potwierdzony": sender_confirmed(mail, address)}
+            "zalaczniki": attachments, "potwierdzony": sender_confirmed(mail, address),
+            "automat": automatic(mail)}
 
 
 def attachments_text(attachments: list[dict]) -> str:
@@ -280,13 +292,14 @@ class Correspondence:
     # --- adding --------------------------------------------------------------
 
     def receive(self, raw: bytes) -> dict | None:
-        """A mail from the mailbox: saved if it comes from someone on the list
-        and Gmail confirmed the sender; otherwise only logged."""
+        """A mail from the mailbox: saved if it comes from someone on the list,
+        Gmail confirmed the sender and no machine sent it; otherwise only logged."""
         mail = parse(raw)
         person = self.people.writer(mail["adres"])
-        if person is None or not mail["potwierdzony"]:
-            self.log.write("mail_odrzucony", adres=mail["adres"], temat=mail["temat_maila"],
-                           powod="spoza listy" if person is None else "niepotwierdzony nadawca")
+        reason = ("spoza listy" if person is None else "niepotwierdzony nadawca" if not mail["potwierdzony"]
+                  else "automatyczny" if mail["automat"] else "")
+        if reason:
+            self.log.write("mail_odrzucony", adres=mail["adres"], temat=mail["temat_maila"], powod=reason)
             return None
         with self._lock:
             if mail["message_id"] and any(m.get("message_id") == mail["message_id"] for m in self._all()):

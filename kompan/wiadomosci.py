@@ -10,7 +10,7 @@ osoby.json (written by hand on the AP computer, never in the repo):
 
     {"uzytkownik": "Radek",
      "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...",
-                "wiadomosci": true, "pisze": true,
+                "wiadomosci": true,
                 "opis": "Kim jest dla Radka i jak do niego pisać (nieobowiązkowe)."}]}
 
 The description goes to the AI with the list of people (cached part of the
@@ -84,7 +84,7 @@ class People:
         """The person on the list who may write to Kompan from this address."""
         address = address.strip().lower()
         return next((p for p in self._load()["osoby"]
-                     if p.get("pisze") and str(p["email"]).strip().lower() == address), None)
+                     if str(p["email"]).strip().lower() == address), None)
 
     def for_ai(self) -> str:
         people = self.for_messages()
@@ -101,13 +101,11 @@ class People:
 # Under every message, as ordinary text (no "-- " signature line, which mail
 # programs often grey out): the words come from the AI, so they may be off.
 # Short, neutral grammatically - the same for every user. Replying is normal,
-# so nothing about it - only where a reply would not be read.
+# so nothing about it.
 AI_NOTE = "Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości."
-NO_REPLY = "Odpowiedzi na ten adres nie są czytane."
 
 
-def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
-              can_reply: bool = False) -> tuple[str, str]:
+def mail_text(user: str, text: str, title: str = "", reply_subject: str = "") -> tuple[str, str]:
     """(subject, body). The text (with its greeting) is in the first person,
     as the user's own message, signed with the name; under it - that the AI
     helped write it.
@@ -119,8 +117,7 @@ def mail_text(user: str, text: str, title: str = "", reply_subject: str = "",
         subject = title or f"Wiadomość od: {user}"
     body = (f"{text}\n\n"
             f"{user}\n\n\n"
-            f"{AI_NOTE}\n"
-            + ("" if can_reply else f"{NO_REPLY}\n"))
+            f"{AI_NOTE}\n")
     return subject, body
 
 
@@ -189,8 +186,7 @@ class Outbox:
         """reply: {"temat_maila", "message_id", "odnosniki"} of the message answered."""
         added = []
         for n, person in enumerate(people):
-            subject, body = mail_text(user, text, title, (reply or {}).get("temat_maila", ""),
-                                      bool(person.get("pisze")))
+            subject, body = mail_text(user, text, title, (reply or {}).get("temat_maila", ""))
             message_id = make_msgid(domain=self.sender.rpartition("@")[2] or "kompan.local")
             headers = {"Od": sender_name(user), "Message-ID": message_id}
             if reply and reply.get("message_id"):

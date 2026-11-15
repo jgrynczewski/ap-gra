@@ -111,7 +111,7 @@ Użytkownikowi Kompan nigdy nie mówi „zadanie”.
 - Odbiorcy tylko z listy w pliku. Wysyła kod, dopiero po „Wyślij”; AI nie może nic wysłać
 - **Pierwsza osoba** (decyzja 2026-11-15, zmienia trzecią osobę z 2026-11-08): wiadomość brzmi jak list Radka („Leki dostaję za późno, czasem o godzinę.”), podpisana jego imieniem; nadawca w programie pocztowym: „Radek (przez Kompana)”
 - **Powitanie** (2026-11-15): AI proponuje je osobno (pole `przekaz.powitanie`, najwyżej 40 znaków) w tonie z opisu osoby („Cześć Mamo,”, „Dzień dobry, Panie Profesorze,”); dla kilku osób wspólne, bez imienia („Cześć,”). Gdy Radek wybierze inne osoby niż te, które AI powitało - „Dzień dobry,” (zawsze może Poprawić). W ciągnącym się wątku bez powitania: pierwsza wiadomość Radka w temacie (nowa sprawa albo pierwsza odpowiedź) - z powitaniem, kolejne - bez. Treść najwyżej 220 znaków, żeby z powitaniem zmieściła się na ekranie potwierdzenia
-- **Stopka o AI pod każdą wiadomością**, krótka, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości.” Odpowiadanie jest czymś normalnym, więc o nim nic. Tylko osobom bez `pisze` (ich odpowiedzi Kompan odrzuca) dochodzi zdanie „Odpowiedzi na ten adres nie są czytane.”, żeby nie pisały w próżnię. Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
+- **Stopka o AI pod każdą wiadomością**, krótka, zwykłym tekstem, widoczna na równi z treścią (bez linii „-- ”, którą programy pocztowe często wyszarzają): „Ta wiadomość powstała z pomocą Kompana, asystenta AI. W sformułowaniach mogą zdarzyć się nieścisłości.” Odpowiadanie jest czymś normalnym, więc o nim nic - każdy z listy może odpisać. Stopka jest bez form rodzajowych i odmiany imienia, więc pasuje do każdego użytkownika
 - Kanał: osobne konto Gmail, hasło aplikacji tylko w `.env`. Po etapie czatu w Wicero także Wicero, wraz z odpowiedziami odbiorców
 - Nieudana wysyłka czeka w kolejce i jest ponawiana; użytkownik o tym słyszy, a jeśli problem trwa, także przy następnej rozmowie
 
@@ -128,12 +128,12 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 `dane-kompan/osoby.json` (wpisuje osoba techniczna; zmiana działa bez restartu):
 ```
 {"uzytkownik": "Radek",
- "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true, "pisze": true,
+ "osoby": [{"imie": "Jurek", "kto": "brat", "email": "...", "wiadomosci": true,
             "opis": "Brat Radka, programista. Swobodnie, po bratersku, można żartować."},
-           {"imie": "Profesor", "kto": "prowadzący zajęcia", "email": "...", "wiadomosci": true, "pisze": true,
+           {"imie": "Profesor", "kto": "prowadzący zajęcia", "email": "...", "wiadomosci": true,
             "opis": "Prof. Nowak. Forma „Panie Profesorze”, uprzejmie i swobodnie, ale nie jak do kolegi. Bez zdrobnień."}]}
 ```
-`wiadomosci`: można mu coś przekazać; `pisze`: Kompan przyjmuje od niego maile (etap 5; zamiast `prosby`, decyzja 2026-11-15); `opis` (nieobowiązkowy, 2026-11-15): kim jest dla Radka i jak do niego pisać - zwykły tekst, kilka zdań. Idzie do AI z listą osób (w buforowanej części promptu, więc prawie nic nie kosztuje) i ustawia ton wiadomości i propozycji odpowiedzi, nigdy treść. Pisze go osoba techniczna; to, czego Kompan dowie się w rozmowie, idzie do notatek. Opis trafia do API przy każdej rozmowie, gdy wiadomości są włączone - nie wpisywać tam niczego, czego nie chcemy tam wysyłać.
+`wiadomosci`: można mu coś przekazać. Każdy z listy może pisać do Kompana (etap 5). Flaga `pisze` (wcześniej `prosby`) usunięta 2026-11-15: ochronę przed spamem dają lista i sprawdzenie nadawcy, a jedyny jej sensowny przypadek - automatyczne maile z adresu z listy (autoodpowiedź ośrodka, newsletter) - odrzuca dla wszystkich filtr nagłówków automatów; stare pole w pliku jest pomijane; `opis` (nieobowiązkowy, 2026-11-15): kim jest dla Radka i jak do niego pisać - zwykły tekst, kilka zdań. Idzie do AI z listą osób (w buforowanej części promptu, więc prawie nic nie kosztuje) i ustawia ton wiadomości i propozycji odpowiedzi, nigdy treść. Pisze go osoba techniczna; to, czego Kompan dowie się w rozmowie, idzie do notatek. Opis trafia do API przy każdej rozmowie, gdy wiadomości są włączone - nie wpisywać tam niczego, czego nie chcemy tam wysyłać.
 
 ### Log, koszty, prywatność
 
