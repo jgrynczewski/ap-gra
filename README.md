@@ -6,7 +6,7 @@ Gra przygodowa czytana na głos, dla użytkowników AP (Assistive-Prototypes): s
 
 Repo AP: `GRA_PLAN.md` (instalacja serwera, testy).
 
-- Mapa wszystkich repozytoriów (ap-gra, AP, Wicero), komputery, zasady pracy: `docs/mapa-projektow.md` w repo `wicero`
+- Kontekst, zasady, kolejka prac i mapa wszystkich repozytoriów: repo `ablelab-plany` (obok tego repo; `README.md` - kontekst, zasady, kolejka prac)
 - Założenia (fabularne i techniczne): [`docs/zalozenia.md`](docs/zalozenia.md)
 - Zarys fabuły: [`docs/fabula.md`](docs/fabula.md)
 - Format scenariusza: [`docs/format.md`](docs/format.md)

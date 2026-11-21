@@ -1,5 +1,7 @@
 # Kompan: rozmowa z AI w AP
 
+**Wątek:** repo `ablelab-plany`, `watki/kompan.md` (stan, kolejka, wszystkie pliki); dalszy kierunek - `watki/kompan-umiejetnosci.md`.
+
 **Status:** projekt zatwierdzony 2026-11-08, kod etapów 1-3 gotowy (do 2026-11-09). 2026-11-14 pierwsze testy z prawdziwym AI na komputerze z AP: K1-K6 zaliczone, poprawki promptu i kosztu po K4 i K6. Kod etapu 4 (wiadomości) gotowy 2026-11-14, etapu 5 (poczta przychodząca, jeden zwiastun w AP) 2026-11-15; oba czekają na konto Gmail. Następny krok: sprawdzić poprawki na rozmowie (zasada „najpierw podstawy”), potem testy K7-K8. Testy ręczne: `KOMPAN_PLAN.md` w repo AP. Kompan to rozmówca dla użytkownika AP: rozmawia na dowolny temat, z czasem coraz lepiej go zna, może dowiedzieć się czegoś na prośbę innej osoby i przekazać to, co ważne, za zgodą użytkownika.
 
 Pomysł pochodzi z repozytorium `kompan` (gałąź `feat/user-context-system`), a technologia z kreatora gier (`kreator-gier.md`), który działa dobrze. Kodu starego Kompana nie używamy.
