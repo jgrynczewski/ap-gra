@@ -15,6 +15,7 @@ only the recent exchanges; older ones are folded into the summary.
 from __future__ import annotations
 
 import json
+import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -95,6 +96,17 @@ START = "Zacznij nową rozmowę."
 CONTINUED = "Wcześniejsza część tej rozmowy jest w streszczeniu."
 CHOICE = "Wybór: "
 WAITING = " (Wpisów czekających na przegląd: {})"
+
+# The daily limit (docs/kompan.md -> Log, koszty): a warning while a few answers
+# are left, so the AI can finish what is going on; after the limit - where they stopped
+WARN_ANSWERS = 15
+BUDGET = " (Na dziś zostało jeszcze około {} odpowiedzi.)"
+BUDGET_LAST = " (To prawdopodobnie ostatnia odpowiedź na dziś.)"
+BUDGET_PATTERN = re.escape(BUDGET).replace(r"\{\}", r"\d+")
+AFTER_LIMIT = " (Wracacie po przerwie: wcześniej rozmowę przerwał dzienny limit.)"
+INTERRUPTED = ("(Poprzednią rozmowę, „{tytul}”, przerwał dzienny limit. Jej ostatnie wymiany:\n{wymiany}\n"
+               "Jeśli przerwaliście coś w połowie, zaproponuj dokończenie.)")
+INTERRUPTED_STEPS = 3
 
 # The review of new entries: screens made by the code, no AI
 REVIEW_LIST = "Przy okazji, zapamiętałem:"
@@ -358,8 +370,21 @@ class Kompan:
                 return conversation
         return None
 
+    def interrupted(self) -> str:
+        """The latest conversation stopped by the daily limit: its title and last
+        exchanges for the opening of a new one (its steps are folded into the
+        summary, where the details of an unfinished poem would get lost)."""
+        latest = self.latest()
+        if latest is None or latest.status != LIMIT:
+            return ""
+        steps = latest.steps[-INTERRUPTED_STEPS:]
+        return INTERRUPTED.format(tytul=latest.title(), wymiany="\n\n".join(latest.exchange(s) for s in steps))
+
     def new(self, opening: str = "", reply: dict | None = None) -> Conversation:
         with self._lock:
+            if not opening:
+                note = self.interrupted()
+                opening = f"{START} {note}" if note else ""
             conversation = Conversation(self.conversations_dir / new_id(), self)
             self._conversations[conversation.id] = conversation
             conversation.reply_to = reply
@@ -660,10 +685,17 @@ class Conversation:
 
     def _tell(self, message: str) -> None:
         """The user's choice (with what the AI should know) goes to the AI."""
-        message += self.info + self.kompan.outbox.news() + self._mail_news()
+        message += self.info + self.kompan.outbox.news() + self._mail_news() + self._budget()
         self.info = ""
         self.steps[-1]["wybor"] = f"{stamp()} {message}"
         self._ask()
+
+    def _budget(self) -> str:
+        """A few answers left today: the AI is told, so it can finish what is going on."""
+        left = self.kompan.costs.answers_left()
+        if left is None or left > WARN_ANSWERS:
+            return ""
+        return BUDGET_LAST if left <= 1 else BUDGET.format(left)
 
     # --- passing something on (no AI) ---------------------------------------
 
@@ -912,6 +944,12 @@ class Conversation:
         with self._lock:
             self.log.write("powrot", status=self.status)
             working = self._working == self._generation and self._working is not None
+            last = self.steps[-1] if self.steps else None
+            if (self.status == LIMIT and last and last["wybor"] and AFTER_LIMIT not in last["wybor"]
+                    and not self.kompan.costs.over_limit()):
+                # Yesterday's "few answers left" is not true any more - a new day, a new limit
+                stale = re.sub(BUDGET_PATTERN, "", last["wybor"]).replace(BUDGET_LAST, "")
+                last["wybor"] = f"{stale}{AFTER_LIMIT} {stamp()}"
             if self.status in (BLAD, LIMIT) or (self.status == MYSLI and not working):
                 self._ask()
 

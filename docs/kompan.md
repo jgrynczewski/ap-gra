@@ -145,6 +145,7 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 - Model: `claude-opus-5-5`, zmiana w `.env`. Po tygodniu porównanie z Sonnet 5.5 na prawdziwych kosztach
 - Szacunek (nie pomiar, 100 pytań dziennie): Opus 5.5 ok. 45-105 $ miesięcznie, Sonnet 5.5 ok. 20-50 $
 - Dzienny limit w Kompanie: 5 $ na start, w `.env`. Po przekroczeniu: „Na dziś muszę już kończyć”, rozmowa zostaje zapisana
+- Pierwszy tydzień (2026-11-21): ok. 5 $ za wieczór rozmowy, limit przerwał wiersz w połowie. Od 2026-11-21 (`kompan/koszty.py` `answers_left`, `kompan/rozmowa.py`): gdy na dziś zostaje najwyżej 15 odpowiedzi (szacunek ze średniej ostatnich), AI dostaje „(Na dziś zostało jeszcze około N odpowiedzi.)”, a przy ostatniej „(To prawdopodobnie ostatnia odpowiedź na dziś.)” - mówi o tym raz i proponuje dokończyć to, co trwa. Powrót do rozmowy przerwanej limitem: AI dostaje „(Wracacie po przerwie...)”. Nowa rozmowa po limicie: w otwarciu tytuł i 3 ostatnie wymiany przerwanej rozmowy, żeby AI mogło zaproponować dokończenie (np. wiersza)
 
 ### Testy bez psucia danych (2026-11-15)
 
@@ -252,7 +253,7 @@ Szczegóły przyjęte przy kodzie etapu 5 (2026-11-15, do zmiany po testach):
 - [x] Klucz API `ap-kompan` w `.env.kompan` na komputerze z AP (wzór: `.env.kompan.example`) - 2026-11-14
 - [ ] Aktualizacja z kopią `dane-kompan/` i instancja testowa (`KOMPAN_PLAN.md` w AP)
 - [ ] Konto Gmail i hasło aplikacji: na testy w `.env.kompan-test`, po testach w `.env.kompan`
-- [ ] Dostęp SSH do komputera z AP - już niepotrzebny dla próśb (mail), przyda się do zdalnej pomocy
+- [x] Dostęp SSH do komputera z AP (2026-11-21, Tailscale, `ssh ap` - `ablelab-plany/watki/wielu-uzytkownikow.md`)
 - [ ] Lista osób i notatki startowe
 - [ ] Nagranie `sounds/kompan.ogg` (do tego czasu głos AP)
 

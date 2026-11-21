@@ -54,3 +54,16 @@ class Costs:
 
     def over_limit(self) -> bool:
         return self.today() >= self.limit
+
+    def answers_left(self, recent: int = 10) -> int | None:
+        """About how many AI answers are left today, from the mean of the
+        recent ones today; None - no answers today yet (nothing to estimate)."""
+        day = self.now().astimezone(ZONE).date()
+        today = [e["usd"] for e in self.log.entries()
+                 if datetime.fromisoformat(e["czas"]).astimezone(ZONE).date() == day]
+        if not today:
+            return None
+        mean = sum(today[-recent:]) / len(today[-recent:])
+        if mean <= 0:
+            return None
+        return max(0, int((self.limit - sum(today)) / mean))

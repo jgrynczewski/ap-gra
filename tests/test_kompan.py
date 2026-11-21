@@ -806,6 +806,77 @@ class CostsTest(unittest.TestCase):
         conversation.come_back()
         self.assertEqual(conversation.view()["tekst"], A2["wypowiedz"])
 
+    def test_few_answers_left_the_ai_is_told(self):
+        # A fake answer costs 0.00128 USD: with 0.01 after the first about 6 are left
+        kompan, client = make(A1, A2, A3, limit=0.01)
+        conversation = kompan.new()
+        conversation.answer(1)
+        last = client.calls[1]["messages"][-1]["content"][0]["text"]
+        self.assertIn("(Na dziś zostało jeszcze około 6 odpowiedzi.)", last)
+
+    def test_plenty_left_no_warning(self):
+        kompan, client = make(A1, A2)
+        conversation = kompan.new()
+        conversation.answer(1)
+        self.assertNotIn("Na dziś zostało", client.calls[1]["messages"][-1]["content"][0]["text"])
+
+    def test_the_last_answer_of_the_day(self):
+        kompan, client = make(A1, A2, limit=0.0025)  # after one answer: one more fits
+        conversation = kompan.new()
+        conversation.answer(1)
+        self.assertIn("(To prawdopodobnie ostatnia odpowiedź na dziś.)",
+                      client.calls[1]["messages"][-1]["content"][0]["text"])
+
+    def test_answers_left_without_answers_today(self):
+        costs = Costs(Path(tempfile.mkdtemp()) / "koszty.jsonl", 5.0)
+        self.assertIsNone(costs.answers_left())
+
+    def test_coming_back_after_the_limit_the_ai_knows(self):
+        today = [datetime.now(timezone.utc)]
+        kompan, client = make(A1, A2, limit=0.001, now=lambda: today[0])
+        conversation = kompan.new()
+        conversation.answer(1)
+        today[0] += timedelta(days=1)
+        conversation.come_back()
+        last = client.calls[1]["messages"][-1]["content"][0]["text"]
+        self.assertIn("Wybór: Tak, cały (Wracacie po przerwie: wcześniej rozmowę przerwał dzienny limit.)", last)
+        # Yesterday's warning is gone (a new day, a new limit); the note once only, also in what is saved
+        self.assertNotIn("ostatnia odpowiedź na dziś", last)
+        self.assertEqual(conversation.steps[0]["wybor"].count("Wracacie po przerwie"), 1)
+
+    def test_coming_back_drops_a_stale_count(self):
+        kompan, client = make(A1, A2, limit=0.01)
+        conversation = kompan.new()
+        with mock.patch.object(kompan.costs, "over_limit", return_value=True):
+            conversation.answer(1)  # "about 6 left" goes with it, then the limit stops it
+        self.assertEqual(conversation.status, LIMIT)
+        self.assertIn("Na dziś zostało jeszcze około 6 odpowiedzi", conversation.steps[0]["wybor"])
+        conversation.come_back()  # the limit is over (as the next day)
+        self.assertNotIn("Na dziś zostało", client.calls[-1]["messages"][-1]["content"][0]["text"])
+
+    def test_new_conversation_after_the_limit_gets_the_unfinished_part(self):
+        poem = said("Druga zwrotka: «Ani jednej litery...» Jak dalej?", "Smutniej", "Weselej", title="Wiersz o Agacie")
+        today = [datetime.now(timezone.utc)]
+        kompan, client = make(poem, SUMMARY, A1, limit=0.001, now=lambda: today[0])
+        first = kompan.new()
+        first.answer(2)
+        self.assertEqual(first.status, LIMIT)
+        today[0] += timedelta(days=1)
+        kompan.new()
+        opening = client.calls[-1]["messages"][0]["content"]
+        opening = opening if isinstance(opening, str) else opening[0]["text"]
+        self.assertIn("Zacznij nową rozmowę. (Poprzednią rozmowę, „Wiersz o Agacie”, przerwał dzienny limit.", opening)
+        self.assertIn("Ani jednej litery", opening)
+        self.assertIn("Wybór: Weselej", opening)
+
+    def test_new_conversation_after_a_normal_end_has_no_note(self):
+        kompan, client = make(A1, A2, SUMMARY, A3)
+        kompan.new().answer(1)
+        kompan.new()
+        opening = client.calls[-1]["messages"][0]["content"]
+        opening = opening if isinstance(opening, str) else opening[0]["text"]
+        self.assertNotIn("dzienny limit", opening)
+
 
 class StampTest(unittest.TestCase):
     def test_polish_time_and_day(self):
