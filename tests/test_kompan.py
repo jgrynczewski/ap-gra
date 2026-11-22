@@ -566,7 +566,7 @@ class MessagesTest(unittest.TestCase):
         self.assertEqual(subject, "Mecz")
         self.assertTrue(body.startswith(LEKI[1] + "\n\nRadek\n\n\nTa wiadomość powstała z pomocą Kompana"), body)
         self.assertNotIn("\n-- \n", body)  # mail programs grey out what is under it
-        self.assertEqual(mailbox.headers[0]["Od"], "Radek (przez Kompana)")
+        self.assertEqual(mailbox.headers[0]["Od"], "Radek")  # the AI note says Kompan helped
         # Now the AI's own question; the AI hears what happened with the next choice
         self.assertEqual(conversation.view()["tekst"], "Coś jeszcze?")
         conversation.answer(1)
@@ -734,8 +734,8 @@ class MessagesTest(unittest.TestCase):
         del sent[:]
         with mock.patch("kompan.wiadomosci.smtplib.SMTP_SSL", FakeSMTP):
             Gmail("kompan@gmail.com", "haslo")("mama@example.com", "Temat", "Treść",
-                                               {"Od": "Radek (przez Kompana)", "Message-ID": "<1@x>"})
-        self.assertEqual(sent[2][0], '"Radek (przez Kompana)" <kompan@gmail.com>')
+                                               {"Od": "Radek Nowak", "Message-ID": "<1@x>"})
+        self.assertEqual(sent[2][0], 'Radek Nowak <kompan@gmail.com>')
         self.assertFalse(Gmail("", "").configured())
 
     def test_bad_osoby_json(self):

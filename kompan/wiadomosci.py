@@ -125,8 +125,9 @@ def mail_text(user: str, text: str, title: str = "", reply_subject: str = "") ->
 
 
 def sender_name(user: str) -> str:
-    """The name the person sees as the sender."""
-    return f"{user} (przez Kompana)" if user else "Kompan"
+    """The name the person sees as the sender: just the user's name (osoby.json,
+    "uzytkownik"); that the AI helped is in the note under the text."""
+    return user or "Kompan"
 
 
 class Gmail:
