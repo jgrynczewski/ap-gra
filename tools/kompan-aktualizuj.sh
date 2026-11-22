@@ -11,10 +11,11 @@ HEALTH=http://localhost:8768/v1/kompan/health
 USLUGA=ap-gra-kompan
 
 stan() {  # "liczba notatek | tytuł ostatniej rozmowy | test"
+    # Wersje sprzed instancji testowej nie mają pola "test" - brak = nie testowa
     curl -sf "$HEALTH" | python3 -c '
 import json, sys
 h = json.load(sys.stdin)
-print("%s | %s | %s" % (h["notatki"], (h["ostatnia"] or {}).get("tytul", "-"), h["test"]))'
+print("%s | %s | %s" % (h["notatki"], (h["ostatnia"] or {}).get("tytul", "-"), h.get("test", False)))'
 }
 
 przerwij() {
