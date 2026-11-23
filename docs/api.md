@@ -102,7 +102,7 @@ Osobna usługa z tego samego obrazu ([`kreator-gier.md`](kreator-gier.md)): jedy
 | Metoda i ścieżka | Wejście | Wyjście |
 |---|---|---|
 | `GET /v1/kreator/health` | - | `{"ok", "ai", "nagrania", "interface"}` - `ai`: czy jest klucz; `interface`: stałe przyciski planszy rozmowy z nagraniami |
-| `POST /v1/kreator/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`) |
+| `POST /v1/kreator/rozmowy` | - | stan nowej rozmowy (zwykle `mysli`); po wyczerpanym limicie gier (`kreator/limity.py`) bez rozmowy: `status` `limit`, `id` puste, w `tekst` kiedy następna gra |
 | `GET /v1/kreator/rozmowy/<id>` | - | stan rozmowy |
 | `POST /v1/kreator/rozmowy/<id>/odpowiedz` | `{"opcja": 2}` | stan (zwykle `mysli`) |
 | `POST /v1/kreator/rozmowy/<id>/wroc` | - | poprzednie pytanie, bez pytania AI |

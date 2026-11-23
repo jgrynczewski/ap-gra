@@ -24,6 +24,7 @@
 - Rozmowa: ok. 5-8 pytań, potem AI streszcza pomysł, a użytkownik wybiera ROZPOCZNIJ albo INNY POMYSŁ.
 - W grach nie występują prawdziwe osoby.
 - Limit kosztów ustawiony na koncie API.
+- **Limit gier** (2026-11-23, `kreator/limity.py`): 1 gra dziennie i najwyżej 5 w tygodniu (poniedziałek-niedziela, czas polski); `AP_GRA_LIMIT_DZIEN`, `AP_GRA_LIMIT_TYDZIEN` w `.env` kreatora, 0 - bez limitu. Gra liczy się od ROZPOCZNIJ, nieudana się nie liczy. Sprawdzany przy STWÓRZ GRĘ, zanim zacznie się rozmowa (nic nie kosztuje); komunikat mówi, kiedy następna: „Dzisiejsza gra już powstała. Następną stworzymy jutro.”, „W tym tygodniu powstało już 5 gier. Następną stworzymy za 3 dni.”
 - Nieudane tworzenie: kilka automatycznych prób, potem głosowy komunikat, że gry nie udało się stworzyć; kafelek się nie pojawia.
 
 ## Architektura (decyzja 2026-11-07)

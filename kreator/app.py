@@ -28,9 +28,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from .ai import AI, configured
+from .limity import blocked
 from .rozmowa import INTERFACE, ZATWIERDZONA, Conversation, ConversationError, audio_of, new_id
 from .rysowanie import Painter
 from .tworzenie import Workshop
+
+LIMIT = "limit"  # POST /rozmowy: no conversation, the text says when the next game can be made
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("AP_GRA_DATA", ROOT / "dane"))
@@ -116,8 +119,24 @@ def health() -> dict:
                           for name, text in INTERFACE.items()}}
 
 
+def limit_view(text: str) -> dict:
+    """No conversation: the limit of games is used up (kreator/limity.py).
+    AP reads the text and goes back to the games."""
+    narrator = app.state.narrator
+    if narrator is not None:
+        try:
+            narrator.recording(text)  # a second or two, then from the cache
+        except Exception as error:  # noqa: BLE001 - AP reads with its own voice then
+            print(f"kreator: nie nagrano {text!r}: {error}", flush=True)
+    return {"id": "", "status": LIMIT, "tekst": text, "audio": audio_of(narrator, text, AUDIO_URL),
+            "opcje": [], "mozna_wrocic": False, "pytanie_nr": 0, "tytul": ""}
+
+
 @app.post("/v1/kreator/rozmowy")
 def start() -> dict:
+    used_up = blocked(app.state.workshop.views())
+    if used_up:
+        return limit_view(used_up)
     kwargs = {"run": app.state.run} if app.state.run else {}
     conversation = Conversation(CONVERSATIONS / new_id(), app.state.ai, app.state.narrator,
                                 AUDIO_URL, **kwargs)

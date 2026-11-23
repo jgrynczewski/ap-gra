@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 import shutil
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -383,7 +383,9 @@ class Workshop:
             task.directory.mkdir(parents=True, exist_ok=True)
             _write_json(task.directory / "pomysl.json", idea)
             _write_json(task.directory / "stan.json", {
-                "status": W_TOKU, "krok": None, "utworzona": datetime.now().isoformat(timespec="seconds")})
+                # With the zone - the limits count days in Polish time (kreator/limity.py)
+                "status": W_TOKU, "krok": None,
+                "utworzona": datetime.now(timezone.utc).isoformat(timespec="seconds")})
             task.log.write("tworzenie_zlecone", gra=task.game, pomysl=idea)
             self._enqueue(task)
         return task

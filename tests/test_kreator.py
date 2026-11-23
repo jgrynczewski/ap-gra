@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 DATA = Path(tempfile.mkdtemp())
 os.environ["AP_GRA_DATA"] = str(DATA)
+# The tests make many games - no limit here (test_limity.py and test_the_limit below)
+os.environ["AP_GRA_LIMIT_DZIEN"] = os.environ["AP_GRA_LIMIT_TYDZIEN"] = "0"
 
 from kreator.ai import AI, AIError  # noqa: E402
 from engine.log import Log  # noqa: E402
@@ -331,6 +333,18 @@ class KreatorApiTest(unittest.TestCase):
                                           json={"opcja": 9}).status_code, 409)
         view = self.client.post(f"/v1/kreator/rozmowy/{cid}/przerwij").json()
         self.assertEqual(view["status"], PRZERWANA)
+
+    def test_the_limit(self):
+        from unittest import mock
+        made = [{"status": "gotowa", "utworzona": "2026-11-23T08:00:00+00:00"}]
+        with mock.patch.dict(os.environ, {"AP_GRA_LIMIT_DZIEN": "1"}),                 mock.patch.object(app.state.workshop, "views", return_value=made),                 mock.patch("kreator.limity.datetime") as clock:
+            from datetime import datetime, timezone
+            clock.now.return_value = datetime(2026, 11, 23, 20, 0, tzinfo=timezone.utc)
+            clock.fromisoformat = datetime.fromisoformat
+            view = self.client.post("/v1/kreator/rozmowy").json()
+        self.assertEqual((view["status"], view["id"], view["opcje"]), ("limit", "", []))
+        self.assertEqual(view["tekst"], "Dzisiejsza gra już powstała. Następną stworzymy jutro.")
+        self.assertEqual(self.client_ai.calls, [])  # nothing asked - the limit costs nothing
 
     def test_errors_and_health(self):
         self.assertEqual(self.client.get("/v1/kreator/rozmowy/nie_ma").status_code, 404)
