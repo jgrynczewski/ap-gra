@@ -185,7 +185,7 @@ INTERFACE = {
     "wroc": "Wróć",
     "zakoncz": "Zakończ",
     "mysle": "Myślę...",
-    "wybrales": "Wybrałeś:",
+    "wybrales": "Twój wybór:",
     "blad": "Coś poszło nie tak. Wróć albo zakończ.",
     "brak_internetu": "Nie mam połączenia z internetem. Za chwilę spróbuj jeszcze raz: Wróć albo zakończ.",
     "limit": "Na dziś muszę już kończyć. Wróćmy do tego jutro.",

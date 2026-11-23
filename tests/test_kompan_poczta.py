@@ -258,7 +258,7 @@ class MailboxTest(unittest.TestCase):
         self.assertTrue(view["tekst"].startswith("Pisze Jurek"))
         view = box.answer(4)  # Nie odpowiadam
         self.assertEqual((view["tekst"], view["opcje"]),
-                         ("Dobrze. Gdybyś zmienił zdanie, znajdziesz ją w Wiadomościach, u: Jurek.", [NEXT]))
+                         ("Dobrze. Gdyby jednak trzeba było odpowiedzieć, znajdziesz ją w Wiadomościach, u: Jurek.", [NEXT]))
         view = box.answer(1)
         self.assertEqual((view["status"], view["tekst"]), (KONIEC, ALL_READ))
         states = {m["osoba"]: m["stan"] for m in kompan.correspondence._all()}

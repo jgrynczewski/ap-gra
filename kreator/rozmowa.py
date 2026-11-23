@@ -70,7 +70,7 @@ INTERFACE = {
     "wroc": "Wróć",
     "przerwij": "Przerwij",
     "mysle": "Myślę...",
-    "wybrales": "Wybrałeś:",  # potwierdzenie wyboru - jak w grze (engine/voice.py)
+    "wybrales": "Twój wybór:",  # potwierdzenie wyboru - jak w grze (engine/voice.py)
     "blad": "Coś poszło nie tak. Wróć albo przerwij.",
     # Tile on the GRY PRZYGODOWE board in AP that opens this conversation
     "stworz_gre": "Stwórz grę",

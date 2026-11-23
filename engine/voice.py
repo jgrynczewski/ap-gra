@@ -30,7 +30,7 @@ INTERFACE = {
     "wyjdz": "Wyjdź z gry",
     "kontynuuj": "Kontynuuj",
     "nowa_gra": "Nowa gra",
-    "wybrales": "Wybrałeś:",  # potwierdzenie wyboru, potem nagranie opcji
+    "wybrales": "Twój wybór:",  # potwierdzenie wyboru, potem nagranie opcji
     "dalej": "Dalej",  # plansza GRY PRZYGODOWE: następna strona kafelków
 }
 

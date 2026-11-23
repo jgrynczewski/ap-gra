@@ -82,10 +82,10 @@ Poza opcjami plansza ma stałe przyciski - też czytane głosem narratora. `GET 
  "wyjdz": {"text": "Wyjdź z gry", "audio": {...}},
  "kontynuuj": {"text": "Kontynuuj", "audio": {...}},
  "nowa_gra": {"text": "Nowa gra", "audio": {...}},
- "wybrales": {"text": "Wybrałeś:", "audio": {...}}}
+ "wybrales": {"text": "Twój wybór:", "audio": {...}}}
 ```
 
-`wybrales` - potwierdzenie po wyborze: klient czyta „Wybrałeś:”, potem nagranie wybranej opcji (wybrany przycisk podświetlony), dopiero potem następna scena.
+`wybrales` - potwierdzenie po wyborze: klient czyta „Twój wybór:” (do 2026-11-23 „Wybrałeś:”), potem nagranie wybranej opcji (wybrany przycisk podświetlony), dopiero potem następna scena.
 
 Lista - `engine/voice.py` (`INTERFACE`); nowy przycisk = nowy wpis, nagranie powstaje przy budowaniu.
 
@@ -125,7 +125,7 @@ Stan: `{"id", "status", "tekst", "audio", "opcje": [{"numer", "tekst", "audio"}]
 Stan tworzenia: `{"id", "gra", "tytul", "status", "krok", "krok_nr", "krokow", "utworzona"}`.
 
 - `status`: `w_toku`, `gotowa`, `nieudana`; `gra` - identyfikator gry w `/v1/games` (`g` + identyfikator rozmowy, `-` zamienione na `_`); `krok` - bieżący krok (`zarys`, `scenariusz`, `kontrola`, `animacja`, `nagrania`, `publikacja`), przy `nieudana` - krok, na którym się nie udało.
-- Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`; `wybrales` - „Wybrałeś:” jak w grze.
+- Komunikaty głosowe (w `interface` z `/v1/kreator/health`): `tworze` - po „Rozpocznij”, `w_trakcie` - gra jeszcze się tworzy, `nieudana`; `wybrales` - „Twój wybór:” jak w grze.
 - Historia tworzenia (każde zapytanie do AI i odpowiedź, odrzucone scenariusze z błędami, kroki) trafia do tego samego logu co rozmowa: `dane/rozmowy/<id>/log.jsonl`; kopia w grze (`rozmowa.jsonl`).
 
 ## Kompan (`ap-gra-kompan`, port 8768)
