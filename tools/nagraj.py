@@ -61,7 +61,8 @@ def record(piper_voice, text: str, path: Path) -> None:
         wav.setnchannels(1)
         wav.setsampwidth(2)
         wav.setframerate(rate)
-        for i, chunk in enumerate(piper_voice.synthesize(text, syn_config=config)):
+        # Times and dates in words (engine/slownie.py) - the screen keeps the digits
+        for i, chunk in enumerate(piper_voice.synthesize(voice.spoken(text), syn_config=config)):
             if i:  # pause between sentences, none at the end - the client spaces recordings
                 wav.writeframes(silence)
             wav.writeframes(chunk.audio_int16_bytes)

@@ -15,6 +15,7 @@ import wave
 from pathlib import Path
 
 from .scenario import Scenario
+from .slownie import spoken
 
 # Chosen 2026-11-01 (docs/zalozenia.md -> "Głos")
 VOICE = "pl_PL-mc_speech-medium"
@@ -47,8 +48,9 @@ def ending_label(number: int, total: int) -> str:
 
 
 def key(text: str) -> str:
-    """File name (without .wav) of the recording of this text."""
-    settings = f"{VOICE}|{LENGTH_SCALE}|{SENTENCE_SILENCE}|{text}"
+    """File name (without .wav) of the recording of this text. From what is
+    spoken: a text without times and dates keeps its old recording."""
+    settings = f"{VOICE}|{LENGTH_SCALE}|{SENTENCE_SILENCE}|{spoken(text)}"
     return hashlib.sha1(settings.encode("utf-8")).hexdigest()[:16]
 
 
