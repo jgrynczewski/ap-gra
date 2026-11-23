@@ -45,6 +45,8 @@ TITLE_CHARS = 40
 
 FROM, TO = "od", "do"  # direction: from a person to Radek, from Radek to a person
 NEW, WAITING, CLOSED = "nowa", "czeka", "zamknieta"  # state of a received message
+# A sender without a name: "Pisze Ktoś spoza listy (wp.pl)" instead of the whole address
+UNNAMED, UNNAMED_BARE = "Ktoś spoza listy ({})", "Ktoś spoza listy"
 
 LINK = re.compile(r"https?://\S+|www\.\S+")
 QUOTE_START = [
@@ -301,7 +303,12 @@ class Correspondence:
         person = self.people.by_address(mail["adres"])
         if person and mail["potwierdzony"]:
             return person["imie"], True
-        name = mail["nazwa"].strip().strip('"').strip() or mail["adres"]
+        name = mail["nazwa"].strip().strip('"').strip()
+        if not name or "@" in name:
+            # No name (or the address as the name): the narrator would spell the
+            # whole address - only the domain, so it is still known where from
+            domain = mail["adres"].rpartition("@")[2].lower()
+            return UNNAMED.format(domain) if domain else UNNAMED_BARE, False
         if name.lower() in {n.lower() for n in self.people.all_names()}:
             name = f"{name} ({mail['adres']})"
         return name, False

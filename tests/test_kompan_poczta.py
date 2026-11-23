@@ -127,8 +127,11 @@ class CorrespondenceTest(unittest.TestCase):
         self.assertIsNone(correspondence.receive(mail()))  # the same mail again
         stranger = correspondence.receive(mail(sender="jan@example.com", name="Jan Kowalski", subject="Koncert"))
         self.assertEqual((stranger["osoba"], stranger["z_listy"], stranger["stan"]), ("Jan Kowalski", False, NEW))
-        bare = correspondence.receive(mail(sender="ktos@example.com", name="", subject="Pytanie"))
-        self.assertEqual(bare["osoba"], "ktos@example.com")
+        # Without a name (or with the address as the name) - not the whole address to read
+        bare = correspondence.receive(mail(sender="ktos@Example.com", name="", subject="Pytanie"))
+        self.assertEqual((bare["osoba"], bare["email"]), ("Ktoś spoza listy (example.com)", "ktos@example.com"))
+        address = correspondence.receive(mail(sender="inny@wp.pl", name="inny@wp.pl", subject="Hej"))
+        self.assertEqual(address["osoba"], "Ktoś spoza listy (wp.pl)")
         # Nobody passes for a close person: a taken name gets the address
         fake = correspondence.receive(mail(sender="obcy@example.com", subject="Pilne"))
         self.assertEqual(fake["osoba"], "Mama (obcy@example.com)")
@@ -142,7 +145,7 @@ class CorrespondenceTest(unittest.TestCase):
         self.assertIn("Temat: Leki. To wiadomość automatyczna.", pages(holiday)[0])
         self.assertNotIn("automatyczna", pages(message)[0])
         log = [json.loads(line) for line in (kompan.data / "poczta.jsonl").read_text().splitlines()]
-        self.assertEqual(sum(e["rodzaj"] == "mail_przyjety" for e in log), 6)
+        self.assertEqual(sum(e["rodzaj"] == "mail_przyjety" for e in log), 7)
         self.assertFalse(any(e["rodzaj"] == "mail_odrzucony" for e in log))
 
     def test_a_reply_to_a_stranger(self):
