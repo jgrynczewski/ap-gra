@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import smtplib
 import threading
+import time
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
@@ -227,6 +228,24 @@ class Outbox:
 
     def waiting(self) -> list[dict]:
         return [m for m in self._all() if m["stan"] == WAITING]
+
+    def get(self, ids: list[str]) -> list[dict]:
+        found = {m["id"]: m for m in self._all()}
+        return [found[mid] for mid in ids if mid in found]
+
+    def wait_tried(self, ids: list[str], timeout: float, step: float = 0.1) -> None:
+        """Until each message was sent or failed once (at most `timeout` seconds)."""
+        end = time.monotonic() + timeout
+        while any(m["stan"] == WAITING and not m["proby"] for m in self.get(ids)):
+            if time.monotonic() >= end:
+                return
+            time.sleep(step)
+
+    def told_waiting(self, ids: list[str]) -> None:
+        """The user was told these still wait - news() says only when they go."""
+        for message in self.get(ids):
+            if message["stan"] == WAITING and not message["zgloszono"]:
+                self._update(message["id"], zgloszono=TOLD_FAILURE)
 
     def news(self) -> str:
         """What the conversation should hear about sending since it last

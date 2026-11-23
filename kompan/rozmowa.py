@@ -31,7 +31,7 @@ from .koszty import Costs
 from .notatki import GUESS, MAX_NEW, NOTE_CHARS, REVIEW_MAX, USER, Notes
 from .poczta import CLOSED, FROM, TO, WAITING as MAIL_WAITING, Checker, Correspondence
 from .skrzynka import LATER, NEXT, NO_REPLY, REPLY, CLOSED_TEXT, TEXTS as MAIL_TEXTS, Mailbox, Reader, pages
-from .wiadomosci import Outbox, People
+from .wiadomosci import SENT, Outbox, People
 
 PROMPT = (Path(__file__).parent / "prompty" / "rozmowa.md").read_text(encoding="utf-8")
 SUMMARY_PROMPT = (Path(__file__).parent / "prompty" / "streszczenie.md").read_text(encoding="utf-8")
@@ -128,8 +128,14 @@ FOR = "Wiadomość dla: "
 SEND_ASK = "Wysłać?"
 FIX_MESSAGE = ("Popraw wiadomość. Dopytaj, co w niej zmienić, a potem zaproponuj ją jeszcze raz "
                "w polu przekaz; odbiorcy zostają ci sami: {}.")
-QUEUED = " (Wiadomość przekazana do wysyłki, do: {}.)"
 NOT_SENT = " (Nic nie zostało wysłane.)"
+# After Wyślij: a screen saying what really happened (perfective, no gender forms),
+# then Dalej. AP waits for the answer up to 10 s - the sending gets a few of them.
+SEND_WAIT = 4.0  # [s] + recording the result; AP waits 10 s
+SENT_TO = "Wiadomość wysłana do: {}."
+NOT_YET = "Wiadomość do: {} jeszcze nie wyszła. Czeka - spróbuję wysłać ją ponownie za kilka minut."
+SENT_INFO = " (Wiadomość wysłana do: {}.)"
+NOT_YET_INFO = " (Wiadomość do: {} jeszcze nie wyszła - czeka, system sam spróbuje znowu.)"
 
 # A message from someone during a conversation
 YES = "Tak"
@@ -181,6 +187,7 @@ INTERFACE = {
     "mysle": "Myślę...",
     "wybrales": "Wybrałeś:",
     "blad": "Coś poszło nie tak. Wróć albo zakończ.",
+    "brak_internetu": "Nie mam połączenia z internetem. Za chwilę spróbuj jeszcze raz: Wróć albo zakończ.",
     "limit": "Na dziś muszę już kończyć. Wróćmy do tego jutro.",
 }
 
@@ -483,6 +490,7 @@ class Conversation:
         self.reading: dict | None = None
         self._generation = 0  # bumped by WRÓĆ - older AI answers are dropped
         self._working: int | None = None  # the generation an AI work runs for
+        self.offline = False  # the last failure (BLAD) was no internet - AP says so
         state = directory / "stan.json"
         if state.is_file():
             saved = json.loads(state.read_text(encoding="utf-8"))
@@ -492,6 +500,7 @@ class Conversation:
             self.message, self.fix_for = saved.get("przekaz"), saved.get("poprawa", [])
             self.info = saved.get("informacja", "")
             self.reply_to, self.reading = saved.get("odpowiedz_na"), saved.get("czytanie")
+            self.offline = saved.get("bez_internetu", False)
 
     # --- the AI in the background ---------------------------------------
 
@@ -549,7 +558,8 @@ class Conversation:
             with self._lock:
                 if generation == self._generation:
                     self.status = BLAD
-                    self.log.write("blad", blad=str(error))
+                    self.offline = error.offline
+                    self.log.write("blad", blad=str(error), bez_internetu=error.offline)
                     self._save()
             return
         finally:
@@ -678,6 +688,15 @@ class Conversation:
                 self._tell(message)
                 return
             record = self._message_answer(chosen)
+            sending = self.message["wiadomosci"] if self.message and self.message["etap"] == "wynik" else []
+        if sending:
+            # Wyślij: a moment for the sending (outside the lock), then say how it went
+            self.kompan.outbox.wait_tried(sending, SEND_WAIT)
+            with self._lock:
+                record = self.message["tekst"] = self._send_result(self.message)
+                self.log.write("wysylka_wynik", tekst=record)
+                self._shown()
+                self._save()
         # The confirmation names the chosen people - recorded now, outside the lock
         # (AP waits for this answer a moment; a few seconds at most)
         if record:
@@ -741,7 +760,9 @@ class Conversation:
         flow = self.message
         if flow["etap"] == "potwierdz":
             return self._confirmation(flow), [SEND, FIX, DONT_SEND]
-        rest = [name for name in flow["kandydaci"] if name not in flow["odbiorcy"]]
+        if flow["etap"] == "wynik":  # without "tekst" only after a restart in the middle
+            return flow.get("tekst") or self._send_result(flow), [NEXT]
+        rest =[name for name in flow["kandydaci"] if name not in flow["odbiorcy"]]
         first = flow["etap"] == "kto"
         text, last = (flow["pytanie"], NOBODY) if first else (ANYONE_ELSE, THATS_ALL)
         if len(rest) <= MAX_OPTIONS - 1:
@@ -754,11 +775,19 @@ class Conversation:
     def _message_answer(self, chosen: str) -> str:
         """Returns a text to record before it is shown ("" - none)."""
         flow = self.message
+        if flow["etap"] == "wynik":  # Dalej after the result of the sending
+            sent, waiting = self._send_state(flow)
+            info = (SENT_INFO.format(", ".join(sent)) if sent else "") + \
+                (NOT_YET_INFO.format(", ".join(waiting)) if waiting else "")
+            return self._message_end(info, "wyslij")
         if chosen == SEND:
+            letter = self._letter(flow)
             queued = self._send(flow)
-            names = ", ".join(m["do"] for m in queued)
-            self.log.write("wiadomosc_do_wysylki", do=[m["do"] for m in queued], tresc=self._letter(flow))
-            return self._message_end(QUEUED.format(names), "wyslij")
+            self.log.write("wiadomosc_do_wysylki", do=[m["do"] for m in queued], tresc=letter)
+            # answer() waits a moment for the sending, then the result is shown
+            flow.update(etap="wynik", wiadomosci=[m["id"] for m in queued], tekst="")
+            self._save()
+            return ""
         if chosen in (DONT_SEND, NOBODY):
             self.reply_to = None
             return self._message_end(NOT_SENT, "nie")
@@ -805,6 +834,22 @@ class Conversation:
         for person, message in zip(people, queued):
             kompan.correspondence.sent(person, title, letter, message["message_id"], message["temat"])
         return queued
+
+    def _send_state(self, flow: dict) -> tuple[list[str], list[str]]:
+        """Who the message already went to, who it still waits for."""
+        messages = self.kompan.outbox.get(flow["wiadomosci"])
+        sent = [m["do"] for m in messages if m["stan"] == SENT]
+        return sent, [m["do"] for m in messages if m["stan"] != SENT]
+
+    def _send_result(self, flow: dict) -> str:
+        """The screen after Wyślij. A message still waiting counts as told, so
+        the AI hears later only that it finally went (Outbox.news)."""
+        sent, waiting = self._send_state(flow)
+        self.kompan.outbox.told_waiting(flow["wiadomosci"])
+        parts = [SENT_TO.format(", ".join(sent))] if sent else []
+        if waiting:
+            parts.append(NOT_YET.format(", ".join(waiting)))
+        return " ".join(parts) or "Nic nie zostało wysłane."
 
     # --- a message from someone during the conversation (no AI) -------------
 
@@ -1010,6 +1055,8 @@ class Conversation:
                 "stale": self._buttons(FIXED if self.status == PYTANIE else [], len(answers) + 1),
                 "mozna_wrocic": self.can_go_back(),
                 "tytul": self.title(),
+                # Why BLAD: "internet" - AP says there is no connection (text "brak_internetu")
+                "powod": "internet" if self.status == BLAD and self.offline else "",
             }
 
     def _save(self) -> None:
@@ -1017,4 +1064,4 @@ class Conversation:
             "id": self.id, "status": self.status, "otwarcie": self.opening,
             "streszczone": self.folded, "przeglad": self.review, "przekaz": self.message,
             "poprawa": self.fix_for, "informacja": self.info, "odpowiedz_na": self.reply_to,
-            "czytanie": self.reading, "kroki": self.steps})
+            "czytanie": self.reading, "bez_internetu": self.offline, "kroki": self.steps})

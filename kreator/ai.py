@@ -31,7 +31,23 @@ BETAS = ["server-side-fallback-2026-07-01"]
 
 class AIError(Exception):
     """The AI did not give a usable answer (no key, network, refusal,
-    answer cut off, not JSON). The message is for the log, not the user."""
+    answer cut off, not JSON). The message is for the log, not the user;
+    offline - no connection (no internet), so the user can be told that."""
+
+    def __init__(self, message: str, offline: bool = False):
+        super().__init__(message)
+        self.offline = offline
+
+
+def offline(error: Exception) -> bool:
+    """No connection to the API (no internet, no DNS, timeout) - not an API error."""
+    try:
+        import anthropic
+    except ImportError:
+        anthropic = None
+    if anthropic and isinstance(error, anthropic.APIConnectionError):  # with APITimeoutError
+        return True
+    return isinstance(error, OSError)
 
 
 def default_client():
@@ -80,7 +96,7 @@ class AI:
                 response = stream.get_final_message()
         except Exception as error:  # noqa: BLE001 - every failure is logged, then reported
             log.write("ai_blad", cel=purpose, blad=f"{type(error).__name__}: {error}")
-            raise AIError(f"{type(error).__name__}: {error}") from error
+            raise AIError(f"{type(error).__name__}: {error}", offline=offline(error)) from error
 
         # After a fallback mid-answer the text before the switch is a partial
         # answer of the first model - only the text after the last switch counts

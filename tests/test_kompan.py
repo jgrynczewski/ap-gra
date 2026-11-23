@@ -156,6 +156,22 @@ class ConversationTest(unittest.TestCase):
         conversation.come_back()
         self.assertEqual(conversation.view()["tekst"], A1["wypowiedz"])
 
+    def test_no_internet_is_told(self):
+        import anthropic
+        import httpx
+        no_connection = anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com"))
+        kompan, _ = make(RuntimeError("awaria"), no_connection, ConnectionError("dns"), A1)
+        conversation = kompan.new()
+        self.assertEqual(conversation.view()["powod"], "")  # another failure - the general text
+        conversation.come_back()
+        self.assertEqual((conversation.status, conversation.view()["powod"]), (BLAD, "internet"))
+        conversation.come_back()
+        self.assertEqual(conversation.view()["powod"], "internet")
+        # After a restart (read from stan.json) it is still known
+        self.assertEqual(type(conversation)(conversation.directory, kompan).view()["powod"], "internet")
+        conversation.come_back()
+        self.assertEqual((conversation.status, conversation.view()["powod"]), (PYTANIE, ""))
+
     def test_leaving_changes_nothing(self):
         kompan, client = make(A1)
         conversation = kompan.new()
@@ -567,12 +583,18 @@ class MessagesTest(unittest.TestCase):
         self.assertTrue(body.startswith(LEKI[1] + "\n\nRadek\n\n\nTa wiadomość powstała z pomocą Kompana"), body)
         self.assertNotIn("\n-- \n", body)  # mail programs grey out what is under it
         self.assertEqual(mailbox.headers[0]["Od"], "Radek")  # the AI note says Kompan helped
+        # What really happened - said at once, then Dalej
+        view = conversation.view()
+        self.assertEqual((view["status"], view["tekst"], texts(view["opcje"])),
+                         (PRZEKAZ, "Wiadomość wysłana do: Mama, Jurek.", ["Dalej"]))
+        conversation.answer(1)  # Dalej
         # Now the AI's own question; the AI hears what happened with the next choice
         self.assertEqual(conversation.view()["tekst"], "Coś jeszcze?")
         conversation.answer(1)
-        self.assertIn("przekazana do wysyłki, do: Mama, Jurek",
+        self.assertIn("(Wiadomość wysłana do: Mama, Jurek.)",
                       client.calls[1]["messages"][-1]["content"][0]["text"])
         self.assertIn("wiadomosc_do_wysylki", kinds(conversation))
+        self.assertIn("wysylka_wynik", kinds(conversation))
 
     def test_nobody(self):
         kompan, client, mailbox, conversation = self.flow(A2)
@@ -654,9 +676,13 @@ class MessagesTest(unittest.TestCase):
         conversation.answer(3)  # To wszystko
         conversation.answer(1)  # Wyślij
         self.assertEqual([m["stan"] for m in kompan.outbox.waiting()], [WAITING])
+        self.assertEqual(conversation.view()["tekst"], "Wiadomość do: Mama jeszcze nie wyszła. "
+                         "Czeka - spróbuję wysłać ją ponownie za kilka minut.")
+        conversation.answer(1)  # Dalej
         conversation.answer(1)
-        self.assertIn("Nie udało się wysłać wiadomości do: Mama",
-                      client.calls[1]["messages"][-1]["content"][0]["text"])
+        heard = client.calls[1]["messages"][-1]["content"][0]["text"]
+        self.assertIn("(Wiadomość do: Mama jeszcze nie wyszła - czeka", heard)
+        self.assertNotIn("Nie udało się", heard)  # already said on the screen
         conversation.answer(1)
         self.assertNotIn("Nie udało się", client.calls[2]["messages"][-1]["content"][0]["text"])
         mailbox.down = False
@@ -694,6 +720,8 @@ class MessagesTest(unittest.TestCase):
         conversation.answer(1)
         conversation.answer(3)  # To wszystko
         self.assertEqual(recorder.texts[-1], conversation.view()["tekst"])
+        conversation.answer(1)  # Wyślij - the result
+        self.assertEqual(recorder.texts[-1], conversation.view()["tekst"])
 
     def test_slow_sending_does_not_hold_the_conversation(self):
         release = threading.Event()
@@ -702,7 +730,9 @@ class MessagesTest(unittest.TestCase):
         kompan.outbox.send = lambda *mail: release.wait(5)  # no internet: a long timeout
         conversation.answer(1)
         conversation.answer(3)
-        conversation.answer(1)  # Wyślij - the sending hangs
+        with mock.patch("kompan.rozmowa.SEND_WAIT", 0.2):
+            conversation.answer(1)  # Wyślij - the sending hangs, the result does not wait for it
+        self.assertIn("Mama jeszcze nie wyszła", conversation.view()["tekst"])
         done = threading.Event()
         threading.Thread(target=lambda: (conversation.answer(1), done.set()), daemon=True).start()
         self.assertTrue(done.wait(2), "the answer waits for the sending")
