@@ -138,6 +138,8 @@ Szczegóły przyjęte przy kodzie (2026-11-14, do zmiany po testach K7-K8):
 ```
 `wiadomosci`: można mu coś przekazać. Pisać do Kompana może każdy, także spoza listy (wyżej, „Poczta przychodząca”); flaga `pisze` (wcześniej `prosby`) usunięta 2026-11-15, stare pole w pliku jest pomijane; `opis` (nieobowiązkowy, 2026-11-15): kim jest dla Radka i jak do niego pisać - zwykły tekst, kilka zdań. Idzie do AI z listą osób (w buforowanej części promptu, więc prawie nic nie kosztuje) i ustawia ton wiadomości i propozycji odpowiedzi, nigdy treść. Pisze go osoba techniczna; to, czego Kompan dowie się w rozmowie, idzie do notatek. Opis trafia do API przy każdej rozmowie, gdy wiadomości są włączone - nie wpisywać tam niczego, czego nie chcemy tam wysyłać.
 
+**Pomoc techniczna zawsze na liście** (2026-11-23): „Pomoc AbleLab” (`ablelab.contact@gmail.com`) jest dopisywana każdemu użytkownikowi, także bez `osoby.json`. Wpis w pliku z tym samym adresem albo imieniem wygrywa (własny opis, inne imię). Inny adres - `AP_KOMPAN_POMOC` w `.env.kompan`; pusty - bez domyślnej pomocy.
+
 ### Log, koszty, prywatność
 
 - Pełny log, zawsze: każde pytanie, wszystkie opcje, wybrana odpowiedź i wszystkie zapytania do AI. Czyta go tylko osoba techniczna
