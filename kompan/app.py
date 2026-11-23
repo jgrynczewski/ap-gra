@@ -36,7 +36,8 @@ EFFORT = os.environ.get("AP_KOMPAN_EFFORT", "medium")
 LIMIT_USD = float(os.environ.get("AP_KOMPAN_LIMIT_USD", "5"))
 # Kompan's own Gmail account and its app password (only in .env.kompan)
 GMAIL = Gmail(os.environ.get("AP_KOMPAN_GMAIL", ""), os.environ.get("AP_KOMPAN_GMAIL_HASLO", ""))
-INBOX = Inbox(GMAIL.user, GMAIL.password)  # the same account, read by IMAP (stage 5)
+# The same account, read by IMAP (stage 5) - only what came after it was connected
+INBOX = Inbox(GMAIL.user, GMAIL.password, DATA / "poczta_stan.json")
 # The test instance (service ap-gra-kompan-test, docs/kompan.md -> Testy bez
 # psucia danych): own data, key and costs; AP says it on the entry screen
 TEST = os.environ.get("AP_KOMPAN_TEST", "") == "1"

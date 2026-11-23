@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from engine.screen import text_lines  # noqa: E402
-from kompan.poczta import (CLOSED, FROM, NEW, PART_LINES, TO, WAITING, Checker, Inbox,  # noqa: E402
+from kompan.poczta import (CLOSED, FROM, MAX_PER_CHECK, NEW, PART_LINES, TO, WAITING, Checker, Inbox,  # noqa: E402
                            attachments_text, html_text, parse, parts, sender_confirmed, strip_quotes, title_of)
 from kompan.rozmowa import CZYTANIE, PRZEKAZ, PYTANIE, SEND, YES  # noqa: E402
 from kompan.skrzynka import (AGAIN, ALL_READ, EARLIER, ENOUGH, KONIEC, LATER, NEXT, NO_REPLY,  # noqa: E402
@@ -201,46 +201,121 @@ class CorrespondenceTest(unittest.TestCase):
         self.assertIn("poczta_blad", (kompan.data / "poczta.jsonl").read_text())
 
 
+class FakeGmail:
+    """An IMAP inbox: {uid: raw}, UIDNEXT, UIDVALIDITY; remembers every call."""
+
+    def __init__(self, mails=None, validity=7):
+        self.mails = dict(mails or {})
+        self.validity = validity
+        self.calls = []
+        self.flags_changed = False
+
+    def add(self, raw):
+        self.mails[max(self.mails, default=0) + 1] = raw
+
+    def __call__(self, host, port, timeout):
+        self.calls.append(("connect", host, port))
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def login(self, user, password):
+        self.calls.append(("login", user, password))
+
+    def status(self, box, what):
+        following = max(self.mails, default=0) + 1
+        return "OK", [f'"{box}" (UIDNEXT {following} UIDVALIDITY {self.validity})'.encode()]
+
+    def select(self, box, readonly=False):
+        self.calls.append(("select", box, readonly))
+
+    def uid(self, command, *args):
+        self.calls.append(("uid", command, *args))
+        if command == "SEARCH":
+            low = int(args[1].split()[1].split(":")[0])
+            found = [u for u in sorted(self.mails) if u >= low] or [max(self.mails)]  # like Gmail: N:* never empty
+            return "OK", [" ".join(map(str, found)).encode()]
+        if command == "FETCH":
+            assert args[1] == "(BODY.PEEK[])"
+            uid = int(args[0])
+            return "OK", [(f"{uid} (UID {uid} BODY[] {{3}}".encode(), self.mails[uid]), b")"]
+        raise AssertionError(command)
+
+    def store(self, *args):
+        self.flags_changed = True
+
+    def search(self, *args):
+        raise AssertionError("no UNSEEN search - old mail is never taken")
+
+
 class InboxTest(unittest.TestCase):
-    def test_reads_unseen_and_marks_after_handling(self):
-        calls = []
+    def setUp(self):
+        self.state = Path(tempfile.mkdtemp()) / "poczta_stan.json"
 
-        class FakeIMAP:
-            def __init__(self, host, port, timeout):
-                calls.append(("connect", host, port))
+    def check(self, gmail):
+        handled = []
+        with mock.patch("kompan.poczta.imaplib.IMAP4_SSL", gmail):
+            Inbox("kompan@gmail.com", "haslo", self.state)(handled.append)
+        return handled
 
-            def __enter__(self):
-                return self
+    def test_an_old_mailbox_gives_nothing_old(self):
+        gmail = FakeGmail({n: b"stary%d" % n for n in range(1, 501)})  # years of mail, read or not
+        self.assertEqual(self.check(gmail), [])
+        saved = json.loads(self.state.read_text(encoding="utf-8"))
+        self.assertEqual((saved["uidvalidity"], saved["ostatni_uid"]), (7, 500))
+        self.assertEqual(self.check(gmail), [])  # still nothing - the inbox is not even opened
+        self.assertNotIn("select", [c[0] for c in gmail.calls])
+        gmail.add(b"nowy1")
+        gmail.add(b"nowy2")
+        self.assertEqual(self.check(gmail), [b"nowy1", b"nowy2"])
+        self.assertEqual(self.check(gmail), [])  # each one once
+        self.assertIn(("select", "INBOX", True), gmail.calls)  # read-only
+        self.assertFalse(gmail.flags_changed)  # Gmail's read / unread untouched
 
-            def __exit__(self, *exc):
-                return False
+    def test_at_most_a_few_at_a_time(self):
+        gmail = FakeGmail({1: b"a"})
+        self.check(gmail)
+        for n in range(MAX_PER_CHECK + 5):
+            gmail.add(b"m%d" % n)
+        first = self.check(gmail)
+        self.assertEqual(len(first), MAX_PER_CHECK)
+        self.assertEqual(first + self.check(gmail), [b"m%d" % n for n in range(MAX_PER_CHECK + 5)])
 
-            def login(self, user, password):
-                calls.append(("login", user, password))
+    def test_a_failure_leaves_the_rest(self):
+        gmail = FakeGmail({1: b"a"})
+        self.check(gmail)
+        gmail.add(b"dobry")
+        gmail.add(b"zly")
+        gmail.add(b"potem")
 
-            def select(self, box):
-                calls.append(("select", box))
-
-            def search(self, charset, criteria):
-                calls.append(("search", criteria))
-                return "OK", [b"1 2"]
-
-            def fetch(self, number, what):
-                calls.append(("fetch", number, what))
-                return "OK", [(b"1 (BODY[] {3}", b"raw" + number), b")"]
-
-            def store(self, number, flags, value):
-                calls.append(("store", number, value))
+        def handle(raw):
+            if raw == b"zly":
+                raise OSError("brak sieci")
+            handled.append(raw)
 
         handled = []
-        with mock.patch("kompan.poczta.imaplib.IMAP4_SSL", FakeIMAP):
-            Inbox("kompan@gmail.com", "haslo")(handled.append)
-        self.assertEqual(handled, [b"raw1", b"raw2"])
-        self.assertEqual(calls[:4], [("connect", "imap.gmail.com", 993), ("login", "kompan@gmail.com", "haslo"),
-                                     ("select", "INBOX"), ("search", "UNSEEN")])
-        # PEEK - not marked as read by fetching; marked only after handling
-        self.assertEqual(calls[4:], [("fetch", b"1", "(BODY.PEEK[])"), ("store", b"1", "\\Seen"),
-                                     ("fetch", b"2", "(BODY.PEEK[])"), ("store", b"2", "\\Seen")])
+        with mock.patch("kompan.poczta.imaplib.IMAP4_SSL", gmail), self.assertRaises(OSError):
+            Inbox("kompan@gmail.com", "haslo", self.state)(handle)
+        self.assertEqual(handled, [b"dobry"])
+        self.assertEqual(self.check(gmail), [b"zly", b"potem"])  # tried again, nothing skipped
+
+    def test_another_mailbox_starts_again(self):
+        gmail = FakeGmail({1: b"a"})
+        self.check(gmail)
+        other = FakeGmail({n: b"inny%d" % n for n in range(1, 40)}, validity=99)
+        self.assertEqual(self.check(other), [])  # its old mail neither
+        other.add(b"nowy")
+        self.assertEqual(self.check(other), [b"nowy"])
+
+    def test_an_empty_mailbox(self):
+        gmail = FakeGmail()
+        self.assertEqual(self.check(gmail), [])
+        gmail.add(b"pierwszy")
+        self.assertEqual(self.check(gmail), [b"pierwszy"])
 
 
 class MailboxTest(unittest.TestCase):

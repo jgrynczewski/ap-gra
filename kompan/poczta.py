@@ -17,6 +17,10 @@ address when that name is taken by someone on the list ("Mama
 reading works without it.
 
 dane-kompan/poczta/<id>.json - one file per message.
+
+Any mailbox can be connected, also one used for years (decision 2026-11-22):
+Kompan takes only the mails that came after it was connected (Inbox) and
+never changes anything in Gmail - "read" is Kompan's own state.
 """
 
 from __future__ import annotations
@@ -39,6 +43,8 @@ from engine.screen import text_lines
 
 IMAP_HOST, IMAP_PORT, IMAP_TIMEOUT = "imap.gmail.com", 993, 30
 CHECK = 60  # [s] how often the mailbox is checked
+MAX_PER_CHECK = 20  # mails taken in one check; the rest in the next ones
+UID_STATUS = re.compile(r"(UIDNEXT|UIDVALIDITY) (\d+)")
 PART_LINES = 8  # screen lines of one part of a message (the header takes the rest)
 TITLE_WORDS = 6  # a topic without a subject is named by the first words
 TITLE_CHARS = 40
@@ -404,23 +410,60 @@ class Correspondence:
 # --- the mailbox ------------------------------------------------------------
 
 class Inbox:
-    """New mails in Kompan's Gmail inbox, by IMAP (the same app password as for sending)."""
+    """Mails that came to the inbox after Kompan was connected, by IMAP (the
+    same app password as for sending).
 
-    def __init__(self, user: str, password: str):
+    The first check only remembers where the inbox is (the next UID) - old
+    mail, read or not, is never taken. Later checks take the mails with a
+    higher UID, at most MAX_PER_CHECK at a time, in order; the point moves
+    on after each handled mail, so a failure leaves the rest for the next
+    check. The inbox is opened read-only and fetched with PEEK: Gmail flags
+    (read / unread) stay as they were. A new UIDVALIDITY (another mailbox
+    or Gmail renumbered it) - the point is set again, nothing old taken.
+
+    state - dane-kompan/poczta_stan.json: {"uidvalidity", "ostatni_uid", "od"}."""
+
+    def __init__(self, user: str, password: str, state: Path):
         self.user, self.password = user, password
+        self.state = state
+
+    def _load(self) -> dict | None:
+        try:
+            return json.loads(self.state.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+
+    def _save(self, validity: int, last: int, since: str) -> None:
+        partial = self.state.with_name(self.state.name + ".part")
+        partial.write_text(json.dumps({"uidvalidity": validity, "ostatni_uid": last, "od": since}),
+                           encoding="utf-8")
+        partial.replace(self.state)
 
     def __call__(self, handle: Callable[[bytes], None]) -> None:
-        """handle(raw) for every unread mail; a mail is marked as read only
-        after it was handled, so a failure leaves it for the next check."""
+        """handle(raw) for every mail that came since the last check."""
         with imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=IMAP_TIMEOUT) as imap:
             imap.login(self.user, self.password)
-            imap.select("INBOX")
-            _, found = imap.search(None, "UNSEEN")
-            for number in found[0].split():
-                _, data = imap.fetch(number, "(BODY.PEEK[])")
-                raw = next(item[1] for item in data if isinstance(item, tuple))
-                handle(raw)
-                imap.store(number, "+FLAGS", "\\Seen")
+            _, status = imap.status("INBOX", "(UIDNEXT UIDVALIDITY)")
+            found = dict(UID_STATUS.findall(status[0].decode() if isinstance(status[0], bytes) else status[0]))
+            following, validity = int(found["UIDNEXT"]), int(found["UIDVALIDITY"])
+            saved = self._load()
+            if not saved or saved.get("uidvalidity") != validity:
+                # Connected now: from here on, nothing old
+                self._save(validity, following - 1, _now())
+                return
+            last, since = saved["ostatni_uid"], saved["od"]
+            if following - 1 <= last:
+                return  # nothing new - no need to open the inbox
+            imap.select("INBOX", readonly=True)
+            _, result = imap.uid("SEARCH", None, f"UID {last + 1}:*")
+            # "N:*" gives the highest UID even when it is below N
+            uids = sorted(int(u) for u in (result[0] or b"").split() if int(u) > last)
+            for uid in uids[:MAX_PER_CHECK]:
+                _, data = imap.uid("FETCH", str(uid), "(BODY.PEEK[])")
+                raw = next((item[1] for item in data if isinstance(item, tuple)), None)
+                if raw:  # None - deleted in the meantime
+                    handle(raw)
+                self._save(validity, uid, since)
 
 
 class Checker:
