@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 os.environ["AP_KOMPAN_DATA"] = tempfile.mkdtemp()
+# No default technical help in the lists of the tests (PeopleTest turns it on)
+os.environ["AP_KOMPAN_POMOC"] = ""
 
 from kompan.koszty import Costs, cost  # noqa: E402
 from kompan.notatki import GUESS, POSTPONE, REVIEW_AT, USER  # noqa: E402
@@ -24,7 +26,7 @@ from kompan.rozmowa import (ALL_GOOD, ANYONE_ELSE, BLAD, BLISKO, DONT_SEND, FIX,
                             PRZEKAZ, PYTANIE, REST_GOOD, SEND, SOMETHING_WRONG, THATS_ALL, WINDOW_KEEP,
                             WINDOW_MAX, WRONG, ZMIEN_TEMAT, ConversationError, Kompan, problems,
                             review_text, stamp)
-from kompan.wiadomosci import SENT, WAITING, Gmail  # noqa: E402
+from kompan.wiadomosci import SENT, WAITING, Gmail, People  # noqa: E402
 from kreator.ai import AI  # noqa: E402
 from test_kreator import FakeClient, response  # noqa: E402
 
@@ -535,6 +537,36 @@ def people(data, *names, user="Radek"):
     (data / "osoby.json").write_text(json.dumps({"uzytkownik": user, "osoby": [
         {"imie": n, "kto": "", "email": f"{n.lower()}@example.com", "wiadomosci": True} for n in names]}),
         encoding="utf-8")
+
+
+class PeopleTest(unittest.TestCase):
+    def people(self, *entries):
+        data = Path(tempfile.mkdtemp())
+        if entries:
+            (data / "osoby.json").write_text(json.dumps({"uzytkownik": "Radek", "osoby": list(entries)}),
+                                             encoding="utf-8")
+        return People(data)
+
+    def test_the_help_is_always_on_the_list(self):
+        with mock.patch.dict(os.environ, {"AP_KOMPAN_POMOC": "pomoc@example.com"}):
+            jurek = {"imie": "Jurek", "email": "jurek@example.com", "wiadomosci": True}
+            self.assertEqual(self.people(jurek).names(), ["Jurek", "Pomoc AbleLab"])
+            self.assertEqual(self.people().names(), ["Pomoc AbleLab"])  # even without osoby.json
+            self.assertEqual(self.people(jurek).by_address("Pomoc@example.com")["imie"], "Pomoc AbleLab")
+            self.assertIn("- Pomoc AbleLab (pomoc techniczna AbleLab)", self.people(jurek).for_ai())
+
+    def test_the_file_wins(self):
+        with mock.patch.dict(os.environ, {"AP_KOMPAN_POMOC": "pomoc@example.com"}):
+            own = {"imie": "Serwis", "email": "POMOC@example.com", "wiadomosci": True}
+            self.assertEqual(self.people(own).names(), ["Serwis"])  # the same address
+            named = {"imie": "Pomoc AbleLab", "email": "inna@example.com", "wiadomosci": True}
+            self.assertEqual([p["email"] for p in self.people(named).for_messages()], ["inna@example.com"])
+
+    def test_the_default_address_and_switching_off(self):
+        with mock.patch.dict(os.environ):
+            del os.environ["AP_KOMPAN_POMOC"]
+            self.assertEqual(self.people().find("Pomoc AbleLab")["email"], "ablelab.contact@gmail.com")
+        self.assertEqual(self.people().names(), [])  # AP_KOMPAN_POMOC="" (the tests)
 
 
 class MessagesTest(unittest.TestCase):

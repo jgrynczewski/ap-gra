@@ -15,11 +15,16 @@ osoby.json (written by hand on the AP computer, never in the repo):
 
 The description goes to the AI with the list of people (cached part of the
 system prompt): it sets the tone of a message, never its content.
+
+The technical help (SUPPORT) is always on the list, even without osoby.json -
+unless the file has a person with its address or its name (that entry wins).
+AP_KOMPAN_POMOC changes its address; empty - no default help.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import smtplib
 import threading
 import time
@@ -37,6 +42,17 @@ SMTP_HOST, SMTP_PORT, SMTP_TIMEOUT = "smtp.gmail.com", 465, 30
 WAITING, SENT = "czeka", "wyslana"  # a message's state
 # What the conversation was told about a message: nothing, its failure
 TOLD_FAILURE = "blad"
+
+SUPPORT_ADDRESS = "ablelab.contact@gmail.com"
+SUPPORT = {"imie": "Pomoc AbleLab", "kto": "pomoc techniczna AbleLab", "wiadomosci": True,
+           "opis": "Pomoc techniczna AbleLab. Pisać tu, gdy coś w AP albo w Kompanie nie działa, "
+                   "jest niejasne albo przydałaby się nowa funkcja. Rzeczowo: co się stało, kiedy, "
+                   "co było na ekranie."}
+
+
+def support() -> dict | None:
+    address = os.environ.get("AP_KOMPAN_POMOC", SUPPORT_ADDRESS).strip()
+    return {**SUPPORT, "email": address} if "@" in address else None
 
 
 def _now() -> str:
@@ -56,6 +72,14 @@ class People:
         self.path = data / "osoby.json"
 
     def _load(self) -> dict:
+        loaded = self._file()
+        help_ = support()
+        if help_ and not any(str(p["email"]).strip().lower() == help_["email"].lower()
+                             or p["imie"] == help_["imie"] for p in loaded["osoby"]):
+            loaded["osoby"] = [*loaded["osoby"], help_]
+        return loaded
+
+    def _file(self) -> dict:
         if not self.path.is_file():
             return {"uzytkownik": "", "osoby": []}
         try:
